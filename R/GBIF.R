@@ -1,0 +1,169 @@
+# ====================================================================================================
+#
+# 1 GLOBAL CHANGE IMPACTS ON BIODIVERSITY:
+# GBIF Data Download and Pre-Processing
+#
+# ====================================================================================================
+
+# with some code snippets borrowed from https://damariszurell.github.io/HU-GCIB/
+
+# ----------------------------------------------------------------------------------------------------
+# IMPORT and DEFINE
+# ----------------------------------------------------------------------------------------------------
+library(rgbif)
+library(raster)
+library(dplyr)
+library(tidyr)
+library(rgdal)
+library(CoordinateCleaner)
+
+setwd("/Users/leonnill/Documents/MSc_GCG/MSc_GCIB")
+
+species_name <- "Ursus arctos"
+
+# retrieve data from GBIF database based on certain conditions
+df <- occ_search(scientificName = species_name, return='data', limit=100000,
+                        hasCoordinate = TRUE,
+                        basisOfRecord = "HUMAN_OBSERVATION",
+                        geometry = 'POLYGON((-9.843 35.679, 32.344 35.679, 32.344 71.414, -9.843 71.414, -9.843 35.679))',
+                        year = '1980, 2020')
+
+# write to .csv
+write.csv(df, "GBIF/GBIF_ursusarctos_europe_1980-2020.csv")
+
+# read 
+df <- read.csv("GBIF/GBIF_ursusarctos_europe_1980-2020.csv")
+
+
+# ----------------------------------------------------------------------------------------------------
+# VISUALIZE DATA
+# ----------------------------------------------------------------------------------------------------
+library(maptools)
+
+data(wrld_simpl)
+plot(wrld_simpl, xlim=c(-9.8, 30), ylim=c(35, 70))
+points(df$decimalLongitude, df$decimalLatitude, col='red',  pch=4)
+
+
+# ----------------------------------------------------------------------------------------------------
+# CLEAN DATA
+# ----------------------------------------------------------------------------------------------------
+# FILTER GENUS
+df <- df[df$scientificName == "Ursus arctos Linnaeus, 1758",]
+
+# COORDINATES / DUPLICATES
+# remove potential NAs (should alread be taken care of by "hasCoordinate = TRUE" in occ_search)
+df <- drop_na(df, c("decimalLatitude", "decimalLongitude"))
+
+df_clean <- clean_coordinates(df, lon="decimalLongitude", lat="decimalLatitude",
+                                     countries="countryCode",
+                                     tests=c("centroids","outliers"),
+                                     value = "clean")
+df_clean <- cc_dupl(df_clean, lon="decimalLongitude", lat="decimalLatitude")
+
+# coordinate uncertainty
+hist(df_clean$coordinateUncertaintyInMeters/1000, breaks = 20)
+df_clean <- df_clean %>%
+  filter(coordinateUncertaintyInMeters/1000 <= 10 | is.na(coordinateUncertaintyInMeters))
+
+# PRESENCE / ABSENCE
+table(df_clean$individualCount)
+# 0     1     2     3     4 
+# 60 12463    27    17    11 
+df_clean <- df_clean %>% 
+  filter(individualCount > 0 | is.na(individualCount)) %>%
+  filter(individualCount < 10 | is.na(individualCount))
+
+table(df_clean$taxonRank)
+
+
+# ----------------------------------------------------------------------------------------------------
+# IUCN RANGE MAPS
+# ----------------------------------------------------------------------------------------------------
+iucn <- readOGR("IUCN/iucn_ursus_arctos/data_0.shp")
+plot(wrld_simpl, xlim=c(-9.5, 32.5), ylim=c(35.5,72))
+#plot(wrld_simpl, xlim=c(-9.8, 4.5), ylim=c(35, 45))
+plot(iucn[iucn$PRESENCE == "1",], col='blue', add=T)
+plot(iucn[iucn$PRESENCE == "5",], col='yellow', add=T)
+points(df_clean$decimalLongitude, df_clean$decimalLatitude, col='red',  pch=4)
+
+# filter GBIF based on IUCN extant range
+presence_points <- SpatialPoints(coords = df_clean[,c(5,4)],
+                                          proj4string = crs(iucn))
+presence_points <- presence_points[iucn,]
+
+
+# ----------------------------------------------------------------------------------------------------
+# CREATE TEMPORARY BINARY MASK
+# ----------------------------------------------------------------------------------------------------
+# reproject presence points to target crs
+ref_img <- raster("Watermask/EUROPE_MASK_10km.tif")
+presence_points <- spTransform(presence_points, crs(ref_img))
+
+# rasterize points and create binary mask of presence
+pres_count <- rasterize(presence_points, ref_img, fun='count')
+writeRaster(pres_count, "GBIF/GBIF_ursusarctos_europe_1990-2020_count_10km.tif", driver="GTiff", overwrite = TRUE)
+
+pres_bin <- Which(pres_count > 0)
+pres_bin <- as.integer(pres_bin)
+names(pres_bin) <- "presence"
+
+# mask
+pres_bin <- mask(pres_bin, ref_img, maskvalue=1, inverse=TRUE)
+writeRaster(pres_bin, "GBIF/GBIF_ursusarctos_europe_1990-2020_presence_10km.tif", driver="GTiff", overwrite = TRUE)
+
+df_pres <- as.data.frame(pres_bin, xy = TRUE)
+dpdf_pres <- SpatialPointsDataFrame(coords = df_pres[,c(1,2)], data = df_pres, proj4string = crs(pres_bin))
+dpdf_pres <- spTransform(dpdf_pres, crs(iucn))  # to lat lon
+df_pres <- as.data.frame(dpdf_pres)  # to df
+colnames(df_pres) <- c("x", "y", "presence", "lon", "lat")
+
+
+# ----------------------------------------------------------------------------------------------------
+# THIN DATASET AND CREATE PSEUDO ABSENCES
+# ----------------------------------------------------------------------------------------------------
+library(spThin)
+
+# PRESENCE & ABSENCE
+l_thinned <- list()
+
+for (i in c(0, 1)){
+  pres_temp <- df_pres %>%
+    dplyr::select(presence, lon, lat) %>%
+    filter(presence == i)
+  
+  if (i == 0) {
+    pres_temp <- sample_n(pres_temp, 10000)
+    pres_temp$presence <- 1
+  }
+  
+  temp_thin <- thin(pres_temp,
+                    lat.col='lat',
+                    long.col='lon',
+                    spec.col='presence',
+                    thin.par=15,
+                    reps=5,
+                    write.files=F,
+                    locs.thinned.list.return=T)
+  
+  # maximum presence records
+  max_pres <- which.max(sapply(temp_thin ,nrow))
+  temp_thin <- temp_thin[[max_pres]]
+  
+  # merge
+  temp_thin <- merge(pres_temp, data.frame(lon=temp_thin$Longitude, lat=temp_thin$Latitude),
+                     by=c('lon', 'lat'))  # to presence df
+  
+  temp_thin <- merge(df_pres[,c(1,2,4,5)], temp_thin, by = c("lon", "lat"), all = TRUE)
+  #temp_thin[is.na(temp_thin)] <- 0
+  temp_thin <- dplyr::select(temp_thin, x, y, presence)
+  l_thinned[[i+1]] <- rasterFromXYZ(temp_thin, res = c(10000, 10000), crs=crs(ref_img))
+}
+
+img_absence <- l_thinned[[1]]
+img_presence <- l_thinned[[2]]
+
+# write to disc
+writeRaster(img_presence, "GBIF/UrsusArctos_EUROPE_10km_presence_thinned.tif", driver="GTiff", overwrite = TRUE)
+writeRaster(img_absence, "GBIF/UrsusArctos_EUROPE_10km_absence_thinned.tif", driver="GTiff", overwrite = TRUE)
+
