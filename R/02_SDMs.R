@@ -198,24 +198,24 @@ calc.eval <- function(dat, colname_species, preds, thresh_method='MaxSens+Spec')
 # ----------------------------------------------------------------------------------------------------
 
 # Mask
-mask <- raster("Watermask/EUROPE_MASK_10km.tif")
+mask <- raster("Mask/EUROPE_MASK_10km.tif")
 
 # CHELSA Bioclim
-l_bioclim <- list.files("CHELSA_BIOCLIM/Europe", pattern = ".tif$", full.names = T)
+l_bioclim <- list.files("Predictor Variables/CHELSA_Bioclim", pattern = ".tif$", full.names = T)
 bioclim <- raster::stack(l_bioclim)
 names(bioclim) <- paste0("bio", 1:dim(bioclim)[3])
 
 # LC fractions
-l_lcf <- list.files("LC_Fractions", pattern = ".tif$", full.names = T)
+l_lcf <- list.files("Predictor Variables/LC_Fractions", pattern = ".tif$", full.names = T)
 lcf <- raster::stack(l_lcf)
 names(lcf) <- c("f_artifical", "f_bare", "f_cropland", "f_highveg", "f_lowveg")
 
 # DEM
-dem <- raster("DEM/GTOPO30_10km.tif_EUROPE.tif")
+dem <- raster("Predictor Variables/DEM/GTOPO30_10km.tif_EUROPE.tif")
 names(dem) <- "dem"
 
 # Landsat Spectral Temporal Metrics
-l_stm <- list.files("STMs", pattern = ".tif$", full.names = T)
+l_stm <- list.files("Predictor Variables/Landsat_STMs", pattern = ".tif$", full.names = T)
 stm <- raster::stack(l_stm)
 names(stm) <- apply(expand.grid(c("tcb", "tcg", "tcw"), c("sos", "pos", "eos")), 1, paste, collapse=".")
 
