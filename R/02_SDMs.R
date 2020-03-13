@@ -417,10 +417,6 @@ r_preds_bin <- rasterFromXYZ(env_preds_bin, crs=crs(brick_preds))
 writeRaster(r_preds, "SDMs/SDM_probability_single.tif", "GTiff")
 writeRaster(r_preds_bin, "SDMs/SDM_binary_single.tif", "GTiff")
 
-# Map predicted occurrence probabilities:
-spplot(r_preds)
-
-
 # We make ensembles:    
 env_ensemble <- data.frame(EU[,1:2], make.ensemble(env_preds[,-c(1:2)], unlist(crossval_perf['TSS',]), unlist(crossval_perf['thresh',])))
 
@@ -428,18 +424,11 @@ env_ensemble <- data.frame(EU[,1:2], make.ensemble(env_preds[,-c(1:2)], unlist(c
 r_ens <- rasterFromXYZ(env_ensemble, crs=crs(brick_preds))
 writeRaster(r_ens, "SDMs/SDM_ensembles_mn_md_wmn_cav_sdp.tif", "GTiff")
 
-# Map continuous ensemble predictions:
-spplot(r_ens[[1:4]])
-
-
 # Binarise ensemble predictions
 env_ensemble_bin <- data.frame(EU[,1:2], sapply(c('mean_prob', 'median_prob', 'wmean_prob'), FUN=function(x){ifelse(env_ensemble[,x]>= unlist(ensemble_perf['thresh',x]),1,0)}))
 
 # Make rasters:
 r_ens_bin <- rasterFromXYZ(env_ensemble_bin, crs=crs(brick_preds))
 writeRaster(r_ens_bin, "SDMs/SDM_ensembles_binary_mn_md_wmn.tif", "GTiff")
-
-# Map predicted presence from ensembles:
-spplot(r_ens_bin)  
 
 
