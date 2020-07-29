@@ -9,6 +9,7 @@
 # ----------------------------------------------------------------------------------------------------------------------
 # IMPORT
 # ----------------------------------------------------------------------------------------------------------------------
+import os
 import gdal
 import numpy as np
 from eopy import raster
@@ -55,8 +56,9 @@ gdal.Translate(out, gdal.Open(f_dem), options=opt)
 # ----------------------------------------------------------------------------------------------------------------------
 # LAND COVER TO FRACTION COVER
 # ----------------------------------------------------------------------------------------------------------------------
+os.chdir('C:/Users/Leon/Google Drive/01_MSc_GCG/MSc6_GCIB/ursus_arctos')
 # reference image
-reference_img = '/Users/leonnill/Documents/MSc_GCG/MSc_GCIB/Watermask/IBERIA_MASK_5km.tif'
+reference_img = 'git/ursus_arctos/Data/Mask/EUROPE_MASK_10km.tif'
 roi = raster.extent([reference_img])
 
 outpath = '/Users/leonnill/Documents/MSc_GCG/MSc_GCIB/LC_Fractions'
@@ -73,6 +75,3 @@ raster.array_to_geotiff(binary, outpath+'/binary.tif', inp_gdal=lc)
 binary = gdal.Open(outpath+'/binary.tif')
 opt = gdal.TranslateOptions(xRes=10000, yRes=10000, resampleAlg='average', outputType=gdal.GDT_Int16, noData=None)
 gdal.Translate(outpath+'/iberia_lc_fraction_highveg_10km.tif', binary, options=opt)
-
-
-
