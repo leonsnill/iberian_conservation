@@ -1,2 +1,2 @@
-# Ursus Arctos
-GCIB WS 2019/10: Habitat suitability and dispersal mapping of the Cantabrian brown bear (ursus arctos). 
+# Iberian Conservation: Ursus arctos and Lynx pardinus
+Assessing suitable habitat for the Iberian brown bear (Ursus arctos) and Lynx (Lync pardinus) populations on the Iberian Peninsula. 
