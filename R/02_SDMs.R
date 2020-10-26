@@ -233,8 +233,8 @@ brick_preds <- setValues(brick_preds, brick_preds_val)
 # SPECIES DATA
 # ----------------------------------------------------------------------------------------------------
 
-r_pre <- raster("GBIF/UrsusArctos_EUROPE_10km_presence_thinned.tif")
-r_abs <- raster("GBIF/UrsusArctos_EUROPE_10km_absence_thinned.tif")
+r_pre <- raster("Data/GBIF/UrsusArctos_EUROPE_10km_presence_thinned.tif")
+r_abs <- raster("Data/GBIF/UrsusArctos_EUROPE_10km_absence_thinned.tif")
 
 # with buffer
 buffer <- raster("GBIF/UrsusArctos_EUROPE_10km_presence_thinned_BUFFER_40km.tif")
