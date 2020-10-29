@@ -17,7 +17,6 @@ library(corrplot)
 library(ecospat)
 library(mecofun)
 
-
 wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
 setwd(wd)
 
@@ -47,7 +46,8 @@ make.preds <- function(model, newdata) {
          gbm = predict.gbm(model, newdata, 
                            n.trees=model$gbm.call$best.trees, type="response"),
          maxnet = predict(model, newdata, type="logistic"),
-         gausspr = predict(model, newdata, type="probabilities"))
+         gausspr = predict(model, newdata, type="probabilities"),
+         graf = predict(model, newdata, type="response"))
 }
 
 
@@ -61,6 +61,7 @@ crossval.preds <- function(model, X_train, y_name, x_name,
   require(gbm)
   require(maxnet)
   require(kernlab)
+  require(GRaF)
   
   # Make k-fold data partitions
   ks <- kfold(X_train, k = kfold, by = X_train[,y_name])
@@ -73,7 +74,7 @@ crossval.preds <- function(model, X_train, y_name, x_name,
     cv_test <- X_train[ks == i,]
     
     # force equal presence-absence for ML algorithms
-    if (class(model)[1]=='randomForest' | class(model)[1]=='rpart' | class(model)[1]=='gbm' | class(model)[1]=='gausspr') {
+    if (class(model)[1]=='randomForest' | class(model)[1]=='rpart' | class(model)[1]=='gbm' | class(model)[1]=='gausspr' | class(model)[1]=='graf') {
       n_pre_cv <- dim(cv_train[cv_train$species == 1,])[1]
       cv_train_abs <- sample_n(cv_train[cv_train$species == 0,], n_pre_cv)
       cv_train <- rbind(cv_train_abs, cv_train[cv_train$species == 1,])
@@ -97,7 +98,8 @@ crossval.preds <- function(model, X_train, y_name, x_name,
                      gbm = gbm(model$call, 'bernoulli', data=cv_train_gbm[,c(x_name,model$response.name)], n.trees=model$gbm.call$best.trees, shrinkage=model$gbm.call$learning.rate, bag.fraction=model$gbm.call$bag.fraction, interaction.depth=model$gbm.call$tree.complexity),
                      maxnet = maxnet(p=cv_train[,y_name], data = cv_train[,x_name]),
                      #gausspr = update(model, data=cv_train))
-                     gausspr = kernlab::gausspr(species~., data = cv_train[,c(x_name, y_name)]), kernel = "rbfdot")
+                     gausspr = kernlab::gausspr(species~., data = cv_train[,c(x_name, y_name)], kernel = "rbfdot"),
+                     graf = GRaF::graf(y = cv_train[,y_name], x = cv_train[,x_name], method = "Laplace", verbose = TRUE))
     
     # We make predictions for k-fold:
     if (class(model)[1]=='gbm') {
@@ -306,6 +308,7 @@ m_rf <- randomForest(x=df_sub_ml[,pred_sel], y=as.factor(df_sub_ml$species),
 
 # (7) Boosted regression trees (BRT)
 library(gbm)
+library(dismo)
 m_brt <- gbm.step(data = df_sub_ml, 
                   gbm.x = pred_sel,
                   gbm.y = 'species', 
@@ -317,8 +320,27 @@ m_brt <- gbm.step(data = df_sub_ml,
 
 
 # (8) Gaussian Process Classification (GPC)
+# option 1
+library(GRaF)
+#m_gpc1 <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE, method = "Laplace", verbose = TRUE)
+m_gpc1 <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], method = "Laplace", verbose = TRUE)
+#m_gpc1 <- GRaF::graf(y = df_sub$species, x = df_sub[,pred_sel], method = "Laplace", weights = df_sub$weight, verbose = TRUE)
+gpc_pred_prob <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="response", progress = "text")  # probability scale predictions
+gpc_pred_lat <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="latent", CI = 'std', progress = "text")  # mean & std on Gaussian scale 
+#beginCluster(4)
+#test <- clusterR(brick_preds[[pred_sel]], raster::predict, args=list(model=m_gpc1))
+#endCluster()
+jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
+                                 "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+
+plot(gpc_pred_prob[[1]], col=jet.colors(100))
+plot(gpc_pred_lat[[2]]^2, col=jet.colors(100))  # 'uncertainty', i.e. std of the multivariate Gaussian around the mean prediction
+
+
+
+# option 2
 library(kernlab)
-m_gpc <- kernlab::gausspr(species~., data = df_sub_ml[,c(pred_sel, "species")], kernel = "rbfdot", cross = 5)
+m_gpc2 <- kernlab::gausspr(species~., data = df_sub_ml[,c(pred_sel, "species")], kernel = "rbfdot", cross = 5)
 
 sel_val <- getValues(brick_preds[[pred_sel]])
 sel_val[is.na(sel_val)] <- 1
@@ -330,7 +352,7 @@ test <- setValues(raster(brick_preds), test)
 # MODEL ASSESSMENT
 # ----------------------------------------------------------------------------------------------------
 #c_models <- c('m_glm', 'm_bc', 'm_dom', 'm_gam', 'm_cart', 'm_rf', 'm_brt')
-c_models <- c('m_glm', 'm_gam', 'm_rf', 'm_gpc')
+c_models <- c('m_gpc1')
 
 # MAKE PREDICTIONS
 train_preds <- sapply(c_models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
