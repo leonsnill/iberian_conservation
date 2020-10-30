@@ -168,3 +168,71 @@ loc.cnt df.freq
 Maximum number of records after thinning: 867
 Number of data.frames with max records: 1
 No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Oct 29 11:05:59 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+42.27 4.76 47.03 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+12313	12315	12324	12328	12334
+1	1	1	1	1
+Maximum number of records after thinning: 12334
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Oct 29 11:06:48 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+0.21 0 0.22 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+858	860	862	863	870
+1	1	1	1	1
+Maximum number of records after thinning: 870
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Fri Oct 30 11:36:14 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+48.77 5.27 54.03 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+12429	12437	12438	12440	12459
+1	1	1	1	1
+Maximum number of records after thinning: 12459
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Fri Oct 30 11:37:10 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+0.02 0 0.01 NA NA
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+181	184	186
+1	2	2
+Maximum number of records after thinning: 186
+Number of data.frames with max records: 2
+No files written for this run.

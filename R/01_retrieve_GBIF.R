@@ -22,12 +22,18 @@ setwd("C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian
 species_name <- "Ursus arctos"
 scientificName <- "Ursus arctos Linnaeus, 1758"
 output_name <- "ursusarctos"
+roi <- 'POLYGON((-9.843 35.679, 32.344 35.679, 32.344 71.414, -9.843 71.414, -9.843 35.679))'
+
+species_name <- "Lynx pardinus"
+scientificName <- "Lynx pardinus (Temminck, 1827)"
+output_name <- "lynxpardinus"
+roi <- 'POLYGON((-9.747 35.844, 3.392 35.844, 3.392 43.858, -9.747 43.858, -9.747 35.844))'
 
 # retrieve data from GBIF database based on certain conditions
 df <- occ_search(scientificName = species_name, return='data', limit=100000,
                         hasCoordinate = TRUE,
                         basisOfRecord = "HUMAN_OBSERVATION",
-                        geometry = 'POLYGON((-9.843 35.679, 32.344 35.679, 32.344 71.414, -9.843 71.414, -9.843 35.679))',
+                        geometry = roi,
                         year = '1980, 2020')
 df <- df$data
 
@@ -139,7 +145,7 @@ for (i in c(0, 1)){
     filter(presence == i)
   
   if (i == 0) {
-    pres_temp <- sample_n(pres_temp, 10000)
+    pres_temp <- sample_n(pres_temp, 20000)
     pres_temp$presence <- 1
   }
   

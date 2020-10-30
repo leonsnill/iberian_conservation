@@ -1,31 +1,34 @@
-# ====================================================================================================
+# =================================================================================================================
 #
 # Iberian Conservation
 # Species Distribution Models
 #
-# ====================================================================================================
+# =================================================================================================================
 
 # with some code snippets borrowed from https://damariszurell.github.io/HU-GCIB/
 
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # IMPORT and DEFINE
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 library(raster)
 library(dplyr)
 library(tidyverse)
 library(corrplot)
 library(ecospat)
 library(mecofun)
+library(dismo)
+library(gam)
+library(GRaF)
 
 wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
 setwd(wd)
 
 species <- "ursusarctos"
+species <- "lynxpardinus"
 
-
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # AUTOMATED PREDICTIONS (altered for weighted predictions)
 make.preds <- function(model, newdata) {
   require(dismo)
@@ -35,7 +38,7 @@ make.preds <- function(model, newdata) {
   require(gbm)
   require(maxnet)
   require(kernlab)
-  
+    
   switch(class(model)[1],
          Bioclim = predict(model, newdata),
          Domain = predict(model, newdata),
@@ -47,7 +50,7 @@ make.preds <- function(model, newdata) {
                            n.trees=model$gbm.call$best.trees, type="response"),
          maxnet = predict(model, newdata, type="logistic"),
          gausspr = predict(model, newdata, type="probabilities"),
-         graf = predict(model, newdata, type="response"))
+         graf = as.numeric(predict(model, newdata, type="response")[,1]))
 }
 
 
@@ -68,6 +71,8 @@ crossval.preds <- function(model, X_train, y_name, x_name,
   
   cross_val_preds <- data.frame(row = row.names(X_train), 
                                 cross_val_preds = numeric(length = nrow(X_train))) 
+  
+  print(paste("Model: ", class(model)[1]))
   
   for (i in seq_len(kfold)) {
     cv_train <- X_train[ks != i,]
@@ -99,7 +104,7 @@ crossval.preds <- function(model, X_train, y_name, x_name,
                      maxnet = maxnet(p=cv_train[,y_name], data = cv_train[,x_name]),
                      #gausspr = update(model, data=cv_train))
                      gausspr = kernlab::gausspr(species~., data = cv_train[,c(x_name, y_name)], kernel = "rbfdot"),
-                     graf = GRaF::graf(y = cv_train[,y_name], x = cv_train[,x_name], method = "Laplace", verbose = TRUE))
+                     graf = GRaF::graf(y = cv_train[,y_name], x = cv_train[,x_name], method = "Laplace", opt.l = T, verbose = TRUE))
     
     # We make predictions for k-fold:
     if (class(model)[1]=='gbm') {
@@ -158,9 +163,9 @@ calc.eval <- function(dat, colname_species, preds, thresh_method='MaxSens+Spec')
 }
 
 
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # PREDICTOR VARIABLES
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 
 # Mask
 mask <- raster("Data/Mask/EUROPE_MASK_10km.tif")
@@ -194,121 +199,102 @@ brick_preds_val <- scale(brick_preds_val)
 brick_preds <- setValues(brick_preds, brick_preds_val)
 
 
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # SPECIES DATA
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
+
+# read presence/absence rasters
 r_pre <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinned.tif"))
 r_abs <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_absence_thinned.tif"))
 
-# with buffer
+# mask absences closer than specified buffer to presences
 buffer <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinned_buffer_50km.tif"))
 r_abs <- mask(r_abs, buffer, maskvalue=1)
 r_pre[r_pre == 1] <- 2
 
+# convert to presence (1) - absence (0) - non (NA)
 pre_abs <- brick(c(r_pre, r_abs))
 pre_abs <- as.matrix(pre_abs)
 pre_abs <- apply(pre_abs, 1, FUN=sum, na.rm = T)
 pre_abs[pre_abs == 0] <- NA
 pre_abs <- pre_abs-1
 
+# cast predictor raster to dataframe and add species presence (1/0)
 df <- as.data.frame(brick_preds, xy = TRUE)
 df[, "species"] <- pre_abs   
-#df <- cbind(df_preds, eval(species) = pre_abs)
 df <- drop_na(df)
 
+# specify predictor and response variable
 X_names <- names(df)[4:length(df)-1]
 y_name <- "species"
 
 # variable correlations
-var_names <- append(X_names, y_name)
-cor_mat <- cor(df[var_names], method='spearman')
-corrplot(cor_mat, tl.srt=45, tl.col="black")
+#var_names <- append(X_names, y_name)
+#cor_mat <- cor(df[var_names], method='spearman')
+#corrplot(cor_mat, tl.srt=45, tl.col="black")
 
+# apply variable selection
 var_sel <- mecofun::select07_cv(X = df[, X_names], y = df[, y_name], kfold = 5, threshold = 0.5)
 pred_sel <- var_sel$pred_sel
 print(pred_sel)
+
+# plot correlations among selected predictors
 cor_mat <- cor(df[append(pred_sel, y_name)], method='spearman')
 corrplot(cor_mat, tl.srt=45, tl.col="black")
 
-# Check how many data points are needed given the number of predictors
+# check how many data points are needed given the number of predictors
 print(dim(df[df$species == 1,]))  # returns 867
 print(length(pred_sel) * 10 * 2)  # returns 260
 
 
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # MODEL FITTING
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
+
+# specify number of absence points 
+n_pre <- dim(df[df$species == 1,])[1]
+
+if (n_pre * 10 < dim(df[df$species == 0,])[1]) {
+  n_abs <- n_pre * 10
+} else {
+  n_abs <- dim(df[df$species == 0,])[1]
+}
 
 # weighting presence-absence data
-n_pre <- dim(df[df$species == 1,])[1]
-n_abs <- 5000
 abs_weights <- n_pre / n_abs
-
 df_sub <- sample_n(df[df$species == 0,], n_abs)
 df_sub <- rbind(df_sub, df[df$species == 1,])
 
 df_sub$weight <- ifelse(df_sub$species == 1, 1, abs_weights)  # abs_weight or 1 if equally 
 
 
-# ************************************************************************************************************************************
-#
-# Select four model types
-#
-# ************************************************************************************************************************************
-
-
-# (1) Generalized Linear Models (GLMs)
+# (1.1) Generalized Linear Models (GLMs)
 m_glm <- step(
   glm(as.formula(paste('species ~', paste(pred_sel, paste0('+ I(', pred_sel,'^2)'), collapse=' + '))),
       family='binomial', data = df_sub, weights = weight)
 )
 
 
-# (2) Generalized Additive Models (GAMs)
-library(gam)
+# (1.2) Generalized Additive Models (GAMs)
 m_gam <- gam( as.formula(
   paste('species ~', paste(paste0('s(',pred_sel,',df=4)'), collapse=' + '))),
   family='binomial', data=df_sub, weights = weight)
 
 
-# (3) BIOCLIM
-library(dismo)
+# (1.3) BIOCLIM
 m_bc <- bioclim(brick_preds[[pred_sel]], df_sub[df_sub$species == 1, c('x','y')])
 
 
-# (4) Domain
-m_dom <- domain(brick_preds[[pred_sel]], df_sub[df_sub$species == 1, c('x','y')])
+# selected machine learners require equal sample size of presence-absence
+#df_sub_ml <- sample_n(df[df$species == 0,], n_pre)
+#df_sub_ml <- rbind(df_sub_ml, df[df$species == 1,])
+ 
+# according to Barbet-Massin et al. (2012): "Same as number of presences, 10 runs when less than 1000 PA with an equal weight for presences and absences"
+df_sub_ml <- sample_n(df_sub[df_sub$species == 0,], n_pre)
+df_sub_ml <- rbind(df_sub_ml, df_sub[df_sub$species == 1,])
 
 
-# Machine Learning Methods require equal sample size of presence-absence
-n_pre <- dim(df[df$species == 1,])[1]
-n_abs <- dim(df[df$species == 1,])[1]
-
-# ************************************************************************************************************************************
-#
-# Implement repeated model fitting for equal pres-abs
-#
-# ************************************************************************************************************************************
-
-df_sub_ml <- sample_n(df[df$species == 0,], n_abs)
-df_sub_ml <- rbind(df_sub_ml, df[df$species == 1,])
-
-# (5) CARTs
-library(rpart)
-m_cart <- rpart( as.formula(
-  paste('species ~', paste(pred_sel, collapse=' + '))),
-  data=df_sub_ml, control=rpart.control(minsplit=20,xval=10))
-
-
-# (6) Random Forest (RF)
-library(randomForest)
-m_rf <- randomForest(x=df_sub_ml[,pred_sel], y=as.factor(df_sub_ml$species), 
-                     ntree=1000, importance =T, na.action = na.omit)
-
-
-# (7) Boosted regression trees (BRT)
-library(gbm)
-library(dismo)
+# (2.1) Boosted regression trees (BRT)
 m_brt <- gbm.step(data = df_sub_ml, 
                   gbm.x = pred_sel,
                   gbm.y = 'species', 
@@ -316,73 +302,80 @@ m_brt <- gbm.step(data = df_sub_ml,
                   tree.complexity = 2,
                   bag.fraction = 0.75,
                   learning.rate = 0.001,
-                  verbose=F)
+                  verbose = F)
 
 
-# (8) Gaussian Process Classification (GPC)
-# option 1
-library(GRaF)
-#m_gpc1 <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE, method = "Laplace", verbose = TRUE)
-m_gpc1 <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], method = "Laplace", verbose = TRUE)
-#m_gpc1 <- GRaF::graf(y = df_sub$species, x = df_sub[,pred_sel], method = "Laplace", weights = df_sub$weight, verbose = TRUE)
-gpc_pred_prob <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="response", progress = "text")  # probability scale predictions
-gpc_pred_lat <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="latent", CI = 'std', progress = "text")  # mean & std on Gaussian scale 
-#beginCluster(4)
-#test <- clusterR(brick_preds[[pred_sel]], raster::predict, args=list(model=m_gpc1))
-#endCluster()
-jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
-                                 "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+# (2.2) Gaussian Process Classification (GPC)
+m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE, method = "Laplace")
+# slow, but optimises lengthscale of RBF kernel
+#m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], method = "Laplace")
+# fast, but only approximates lenghtscale by input features
 
-plot(gpc_pred_prob[[1]], col=jet.colors(100))
-plot(gpc_pred_lat[[2]]^2, col=jet.colors(100))  # 'uncertainty', i.e. std of the multivariate Gaussian around the mean prediction
+#gpc_pred_prob <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="response", progress = "text")  # probability scale predictions
+#gpc_pred_lat <- raster::predict(m_gpc1, brick_preds[[pred_sel]], type="latent", CI = 'std', progress = "text")  # mean & std on Gaussian scale 
+#jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+#plot(gpc_pred_prob[[1]], col=jet.colors(100))
+#plot(gpc_pred_lat[[2]]^2, col=jet.colors(100))  # 'uncertainty', i.e. std of the multivariate Gaussian around the mean prediction
 
 
 
-# option 2
-library(kernlab)
-m_gpc2 <- kernlab::gausspr(species~., data = df_sub_ml[,c(pred_sel, "species")], kernel = "rbfdot", cross = 5)
-
-sel_val <- getValues(brick_preds[[pred_sel]])
-sel_val[is.na(sel_val)] <- 1
-test <- predict(m_gpc, sel_val, type="probabilities")
-test <- setValues(raster(brick_preds), test)
 
 
-# ----------------------------------------------------------------------------------------------------
+
+# ----- OLD MODELS
+# (4) Domain
+#m_dom <- domain(brick_preds[[pred_sel]], df_sub[df_sub$species == 1, c('x','y')])
+
+# (5) CARTs
+#library(rpart)
+#m_cart <- rpart( as.formula(
+#paste('species ~', paste(pred_sel, collapse=' + '))),
+#data=df_sub_ml, control=rpart.control(minsplit=20,xval=10))
+
+
+# (6) Random Forest (RF)
+#library(randomForest)
+#m_rf <- randomForest(x=df_sub_ml[,pred_sel], y=as.factor(df_sub_ml$species), 
+#ntree=1000, importance =T, na.action = na.omit)
+
+
+graf = predict(m_gp, df_sub[, pred_sel], type="response")
+
+
+# -----------------------------------------------------------------------------------------------------------------
 # MODEL ASSESSMENT
-# ----------------------------------------------------------------------------------------------------
-#c_models <- c('m_glm', 'm_bc', 'm_dom', 'm_gam', 'm_cart', 'm_rf', 'm_brt')
-c_models <- c('m_gpc1')
+# -----------------------------------------------------------------------------------------------------------------
+models <- c('m_glm', 'm_gam', 'm_bc', 'm_brt', 'm_gp')
 
-# MAKE PREDICTIONS
-train_preds <- sapply(c_models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
 
-# INTERNAL MODEL PERFORMANCE
-train_perf <- data.frame(sapply(c_models, FUN=function(x){calc.eval(df_sub, 'species', train_preds[,x])}))
+# (1) internal (training data) performance
+# make predictions
+train_preds <- sapply(models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
+
+# assess performance
+train_perf <- data.frame(sapply(models, FUN=function(x){calc.eval(df_sub, 'species', train_preds[,x])}))
 print(train_perf)
-write.csv2(apply(train_perf,2,as.character), "internal_model_validation_sel07-th05.csv")
+write.csv2(apply(train_perf, 2, as.character), paste(species, "_internal_model_validation_sel07-th05.csv"))
 
-# CROSS-VALIDATED PREDICTIONS
-crossval_preds <- sapply(c_models, FUN = function(x) {crossval.preds(model = eval(parse(text=x)),
+
+# (2) cross-validated performance
+# make predictions
+crossval_preds <- sapply(models, FUN = function(x) {crossval.preds(model = eval(parse(text=x)),
                                                                      X_train = df_sub, 
                                                                      y_name = 'species', 
                                                                      x_name = pred_sel, 
                                                                      X_raster = brick_preds, 
                                                                      colname_coord = c('x','y'), 
                                                                      kfold=5)})
-
-
-# K-FOLD MODEL PERFORMANCE
-crossval_perf <- data.frame(sapply(c_models, FUN=function(x){calc.eval(df_sub,
-                                                                       'species',
-                                                                       crossval_preds[,x])}))
+# assess performance
+crossval_perf <- data.frame(sapply(models, FUN=function(x){calc.eval(df_sub, 'species', crossval_preds[,x])}))
 print(crossval_perf)
-write.csv2(apply(crossval_perf,2,as.character), "k5-fold_crossval_model_validation_sel07-th05.csv")
+write.csv2(apply(crossval_perf, 2, as.character), paste(species, "_k5-fold_crossval_model_validation_sel07-th05.csv"))
 
 
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # MODEL ENSEMBLES
-# ----------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 make.ensemble <- function(preds, eval_metric, thresh){
   # "preds" is a data.frame containing predictions for different algorithms.
   # "eval_metric" is a vector with same length as number of columns in preds. It provides the evaluation metric used for weighting probabilities.
@@ -397,13 +390,6 @@ make.ensemble <- function(preds, eval_metric, thresh){
 }
 
 # Make ensemble predictions:
-
-# ************************************************************************************************************************************
-#
-# Maximise sensitivity (still to be discussed how)
-#
-# ************************************************************************************************************************************
-
 ensemble_preds <- make.ensemble(crossval_preds,
                                 unlist(crossval_perf['TSS',]),
                                 unlist(crossval_perf['thresh',]))
@@ -412,7 +398,7 @@ ensemble_preds <- make.ensemble(crossval_preds,
 ensemble_perf <- sapply(names(ensemble_preds)[1:4], FUN=function(x){calc.eval(df_sub, 'species', ensemble_preds[,x])})
 summary(ensemble_preds)
 print(ensemble_perf)
-write.csv2(apply(ensemble_perf,2,as.character), "ensemble_model_validation_sel07-th05.csv")
+write.csv2(apply(ensemble_perf,2,as.character), paste(species, "_ensemble_model_validation_sel07-th05.csv"))
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -423,30 +409,30 @@ EU[is.na(EU)] <- 0
 EU <- drop_na(EU)
 
 # We make predictions of all models:
-env_preds <- data.frame(EU[,1:2], sapply(c_models, FUN=function(m){make.preds(eval(parse(text=m)), EU)}))
+env_preds <- data.frame(EU[,1:2], sapply(models, FUN=function(m){make.preds(eval(parse(text=m)), EU[, pred_sel])}))
 
 # Binarise predictions of all algorithms
-env_preds_bin <- data.frame(EU[,1:2], sapply(c_models, FUN=function(x){ifelse(env_preds[,x]>= unlist(crossval_perf['thresh',x]),1,0)}))
+env_preds_bin <- data.frame(EU[,1:2], sapply(models, FUN=function(x){ifelse(env_preds[,x]>= unlist(crossval_perf['thresh',x]),1,0)}))
 
 # Make rasters from predictions:
-r_preds <- rasterFromXYZ(env_preds[,c(1,2,6)], crs=crs(brick_preds))
+r_preds <- rasterFromXYZ(env_preds, crs=crs(brick_preds))
 r_preds_bin <- rasterFromXYZ(env_preds_bin, crs=crs(brick_preds))
 
-writeRaster(r_preds, "SDMs/SDM_probability_single.tif", "GTiff")
-writeRaster(r_preds_bin, "SDMs/SDM_binary_single.tif", "GTiff")
+writeRaster(r_preds, paste0("Data/SDMs/", species, "_SDM_probability_models.tif"), "GTiff")
+writeRaster(r_preds_bin, paste0("Data/SDMs/", species, "_SDM_binary_models.tif"), "GTiff")
 
 # We make ensembles:    
 env_ensemble <- data.frame(EU[,1:2], make.ensemble(env_preds[,-c(1:2)], unlist(crossval_perf['TSS',]), unlist(crossval_perf['thresh',])))
 
 # Make rasters from ensemble predictions:
 r_ens <- rasterFromXYZ(env_ensemble, crs=crs(brick_preds))
-writeRaster(r_ens, "SDMs/SDM_ensembles_mn_md_wmn_cav_sdp.tif", "GTiff")
+writeRaster(r_ens, paste0("Data/SDMs/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"), "GTiff")
 
 # Binarise ensemble predictions
 env_ensemble_bin <- data.frame(EU[,1:2], sapply(c('mean_prob', 'median_prob', 'wmean_prob'), FUN=function(x){ifelse(env_ensemble[,x]>= unlist(ensemble_perf['thresh',x]),1,0)}))
 
 # Make rasters:
 r_ens_bin <- rasterFromXYZ(env_ensemble_bin, crs=crs(brick_preds))
-writeRaster(r_ens_bin, "SDMs/SDM_ensembles_binary_mn_md_wmn.tif", "GTiff")
+writeRaster(r_ens_bin, paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_wmn.tif"), "GTiff")
 
 
