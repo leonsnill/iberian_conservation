@@ -23,7 +23,7 @@ library(GRaF)
 wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
 setwd(wd)
 
-species <- "ursusarctos"
+#species <- "ursusarctos"
 species <- "lynxpardinus"
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ crossval.preds <- function(model, X_train, y_name, x_name,
                      maxnet = maxnet(p=cv_train[,y_name], data = cv_train[,x_name]),
                      #gausspr = update(model, data=cv_train))
                      gausspr = kernlab::gausspr(species~., data = cv_train[,c(x_name, y_name)], kernel = "rbfdot"),
-                     graf = GRaF::graf(y = cv_train[,y_name], x = cv_train[,x_name], method = "Laplace", opt.l = T, verbose = TRUE))
+                     graf = GRaF::graf(y = cv_train[,y_name], x = cv_train[,x_name], method = "Laplace", opt.l = T))
     
     # We make predictions for k-fold:
     if (class(model)[1]=='gbm') {
@@ -290,23 +290,33 @@ m_bc <- bioclim(brick_preds[[pred_sel]], df_sub[df_sub$species == 1, c('x','y')]
 #df_sub_ml <- rbind(df_sub_ml, df[df$species == 1,])
  
 # according to Barbet-Massin et al. (2012): "Same as number of presences, 10 runs when less than 1000 PA with an equal weight for presences and absences"
-df_sub_ml <- sample_n(df_sub[df_sub$species == 0,], n_pre)
-df_sub_ml <- rbind(df_sub_ml, df_sub[df_sub$species == 1,])
+c_brt <- c()
+c_gp <- c()
+
+for (i in 1:10) {
+  df_sub_i <- sample_n(df_sub[df_sub$species == 0,], n_pre)
+  df_sub_i <- rbind(df_sub_i, df_sub[df_sub$species == 1,])
+  
+  # (2.1) Boosted regression trees (BRT)
+  m_brt <- gbm.step(data = df_sub_i, 
+                    gbm.x = pred_sel,
+                    gbm.y = 'species', 
+                    family = 'bernoulli',
+                    tree.complexity = 2,
+                    bag.fraction = 0.75,
+                    learning.rate = 0.001,
+                    verbose = F)
+  assign(paste0("m_brt", i), m_brt)
+  c_brt[i] <- paste0("m_brt", i)
+  
+  # (2.2) Gaussian Process Classification (GPC)
+  m_gp <- GRaF::graf(y = df_sub_i$species, x = df_sub_i[,pred_sel], opt.l = TRUE, method = "Laplace")
+  assign(paste0("m_gp", i), m_gp)
+  c_gp[i] <- paste0("m_gp", i)
+}
 
 
-# (2.1) Boosted regression trees (BRT)
-m_brt <- gbm.step(data = df_sub_ml, 
-                  gbm.x = pred_sel,
-                  gbm.y = 'species', 
-                  family = 'bernoulli',
-                  tree.complexity = 2,
-                  bag.fraction = 0.75,
-                  learning.rate = 0.001,
-                  verbose = F)
 
-
-# (2.2) Gaussian Process Classification (GPC)
-m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE, method = "Laplace")
 # slow, but optimises lengthscale of RBF kernel
 #m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], method = "Laplace")
 # fast, but only approximates lenghtscale by input features
@@ -316,11 +326,6 @@ m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE
 #jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
 #plot(gpc_pred_prob[[1]], col=jet.colors(100))
 #plot(gpc_pred_lat[[2]]^2, col=jet.colors(100))  # 'uncertainty', i.e. std of the multivariate Gaussian around the mean prediction
-
-
-
-
-
 
 # ----- OLD MODELS
 # (4) Domain
@@ -337,30 +342,46 @@ m_gp <- GRaF::graf(y = df_sub_ml$species, x = df_sub_ml[,pred_sel], opt.l = TRUE
 #library(randomForest)
 #m_rf <- randomForest(x=df_sub_ml[,pred_sel], y=as.factor(df_sub_ml$species), 
 #ntree=1000, importance =T, na.action = na.omit)
+#graf = predict(m_gp, df_sub[, pred_sel], type="response")
 
-
-graf = predict(m_gp, df_sub[, pred_sel], type="response")
 
 
 # -----------------------------------------------------------------------------------------------------------------
 # MODEL ASSESSMENT
 # -----------------------------------------------------------------------------------------------------------------
-models <- c('m_glm', 'm_gam', 'm_bc', 'm_brt', 'm_gp')
+all_models <- c('m_glm', 'm_gam', 'm_bc', 'm_brt', 'm_gp')
+stat_models <- c('m_glm', 'm_gam', 'm_bc')
+ml_models <- c(c_brt, c_gp)
 
 
 # (1) internal (training data) performance
 # make predictions
-train_preds <- sapply(models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
+train_preds_stat <- sapply(stat_models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
+train_preds_ml <- sapply(ml_models, FUN=function(m){make.preds(eval(parse(text=m)), df_sub[, pred_sel])})
+
+# average ml predictions
+brt_means <- train_preds_ml %>%
+  as.data.frame() %>%
+  select(c(1,1:10)) %>%
+  rowMeans()
+gp_means <- train_preds_ml %>%
+  as.data.frame() %>%
+  select(c(1,11:20)) %>%
+  rowMeans()
+
+# combine all models
+train_preds <- data.frame(cbind(train_preds_stat, brt_means, gp_means))
+names(train_preds) <- all_models
 
 # assess performance
-train_perf <- data.frame(sapply(models, FUN=function(x){calc.eval(df_sub, 'species', train_preds[,x])}))
+train_perf <- data.frame(sapply(all_models, FUN=function(x){calc.eval(df_sub, 'species', train_preds[,x])}))
 print(train_perf)
-write.csv2(apply(train_perf, 2, as.character), paste(species, "_internal_model_validation_sel07-th05.csv"))
+write.csv2(apply(train_perf, 2, as.character), paste("Data/SDMs/", species, "_internal_model_validation_sel07-th05.csv"))
 
 
 # (2) cross-validated performance
 # make predictions
-crossval_preds <- sapply(models, FUN = function(x) {crossval.preds(model = eval(parse(text=x)),
+crossval_preds <- sapply(all_models, FUN = function(x) {crossval.preds(model = eval(parse(text=x)),
                                                                      X_train = df_sub, 
                                                                      y_name = 'species', 
                                                                      x_name = pred_sel, 
@@ -368,9 +389,9 @@ crossval_preds <- sapply(models, FUN = function(x) {crossval.preds(model = eval(
                                                                      colname_coord = c('x','y'), 
                                                                      kfold=5)})
 # assess performance
-crossval_perf <- data.frame(sapply(models, FUN=function(x){calc.eval(df_sub, 'species', crossval_preds[,x])}))
+crossval_perf <- data.frame(sapply(all_models, FUN=function(x){calc.eval(df_sub, 'species', crossval_preds[,x])}))
 print(crossval_perf)
-write.csv2(apply(crossval_perf, 2, as.character), paste(species, "_k5-fold_crossval_model_validation_sel07-th05.csv"))
+write.csv2(apply(crossval_perf, 2, as.character), paste("Data/SDMs/", species, "_k5-fold_crossval_model_validation_sel07-th05.csv"))
 
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -398,7 +419,7 @@ ensemble_preds <- make.ensemble(crossval_preds,
 ensemble_perf <- sapply(names(ensemble_preds)[1:4], FUN=function(x){calc.eval(df_sub, 'species', ensemble_preds[,x])})
 summary(ensemble_preds)
 print(ensemble_perf)
-write.csv2(apply(ensemble_perf,2,as.character), paste(species, "_ensemble_model_validation_sel07-th05.csv"))
+write.csv2(apply(ensemble_perf,2,as.character), paste("Data/SDMs/", species, "_ensemble_model_validation_sel07-th05.csv"))
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -408,21 +429,30 @@ EU <- data.frame(rasterToPoints(brick_preds[[pred_sel]]))
 EU[is.na(EU)] <- 0
 EU <- drop_na(EU)
 
-# We make predictions of all models:
-env_preds <- data.frame(EU[,1:2], sapply(models, FUN=function(m){make.preds(eval(parse(text=m)), EU[, pred_sel])}))
+# make predictions
+img_pred <- data.frame(EU[,1:2], sapply(stat_models, FUN=function(m){make.preds(eval(parse(text=m)), EU[, pred_sel])}))
+img_pred_ml <- data.frame(EU[,1:2], sapply(ml_models, FUN=function(m){make.preds(eval(parse(text=m)), EU[, pred_sel])}))
+img_pred_brt <- img_pred_ml %>%
+  select(c_brt) %>%
+  rowMeans()
+img_pred_gp <- img_pred_ml %>%
+  select(c_gp) %>%
+  rowMeans()
+img_pred <- cbind(img_pred, img_pred_brt, img_pred_gp)
+names(img_pred) <- c("x", "y", all_models)
 
 # Binarise predictions of all algorithms
-env_preds_bin <- data.frame(EU[,1:2], sapply(models, FUN=function(x){ifelse(env_preds[,x]>= unlist(crossval_perf['thresh',x]),1,0)}))
+env_preds_bin <- data.frame(EU[,1:2], sapply(all_models, FUN=function(x){ifelse(img_pred[,x]>= unlist(crossval_perf['thresh',x]),1,0)}))
 
 # Make rasters from predictions:
-r_preds <- rasterFromXYZ(env_preds, crs=crs(brick_preds))
+r_preds <- rasterFromXYZ(img_pred, crs=crs(brick_preds))
 r_preds_bin <- rasterFromXYZ(env_preds_bin, crs=crs(brick_preds))
 
 writeRaster(r_preds, paste0("Data/SDMs/", species, "_SDM_probability_models.tif"), "GTiff")
 writeRaster(r_preds_bin, paste0("Data/SDMs/", species, "_SDM_binary_models.tif"), "GTiff")
 
 # We make ensembles:    
-env_ensemble <- data.frame(EU[,1:2], make.ensemble(env_preds[,-c(1:2)], unlist(crossval_perf['TSS',]), unlist(crossval_perf['thresh',])))
+env_ensemble <- data.frame(EU[,1:2], make.ensemble(img_pred[,-c(1:2)], unlist(crossval_perf['TSS',]), unlist(crossval_perf['thresh',])))
 
 # Make rasters from ensemble predictions:
 r_ens <- rasterFromXYZ(env_ensemble, crs=crs(brick_preds))
