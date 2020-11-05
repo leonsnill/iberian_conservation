@@ -110,6 +110,10 @@ presence_points <- SpatialPoints(coords = df_clean[,c("decimalLongitude", "decim
 # ----------------------------------------------------------------------------------------------------
 # reproject presence points to target crs
 ref_img <- raster("Data/Mask/EUROPE_MASK_10km.tif")
+# adjust reference image to Iberia for the lynx
+if(species_name == "Lynx pardinus"){
+  ref_img <- raster("Data/Mask/IBERIA_MASK_10km.tif")
+}
 presence_points <- spTransform(presence_points, crs(ref_img))
 
 # rasterize points and create binary mask of presence
@@ -145,7 +149,9 @@ for (i in c(0, 1)){
     filter(presence == i)
   
   if (i == 0) {
-    pres_temp <- sample_n(pres_temp, 20000)
+    if (species_name == "Ursus arctos") {
+      pres_temp <- sample_n(pres_temp, 20000)
+    }
     pres_temp$presence <- 1
   }
   
