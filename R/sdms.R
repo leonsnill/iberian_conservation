@@ -169,6 +169,9 @@ calc.eval <- function(dat, colname_species, preds, thresh_method='MaxSens+Spec')
 
 # Mask
 mask <- raster("Data/Mask/EUROPE_MASK_10km.tif")
+if(species_name == "Lynx pardinus"){
+  mask <- raster("Data/Mask/IBERIA_MASK_10km.tif")
+}
 
 # CHELSA Bioclim
 l_bioclim <- list.files("Data/Predictors/CHELSA_Bioclim", pattern = ".tif$", full.names = T)
