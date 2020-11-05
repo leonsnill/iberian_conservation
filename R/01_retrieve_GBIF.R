@@ -38,11 +38,12 @@ df <- occ_search(scientificName = species_name, return='data', limit=100000,
 df <- df$data
 
 # write to .csv
-write.csv(df, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
+#write.csv(df, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
 
 # read 
-df <- read.csv(paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
+df <- read_csv(paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
 
+output_name <- "lynxpardinus15"
 
 # ----------------------------------------------------------------------------------------------------
 # VISUALIZE DATA

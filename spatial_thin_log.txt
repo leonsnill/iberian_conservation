@@ -270,3 +270,71 @@ loc.cnt df.freq
 Maximum number of records after thinning: 188
 Number of data.frames with max records: 2
 No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Nov  5 11:36:49 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+11.844 3.01 15.014 0 0
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+2806	2810	2812	2832
+1	1	2	1
+Maximum number of records after thinning: 2832
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Nov  5 11:37:04 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+0.02 0.003 0.024 0 0
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+180	182	185
+1	2	2
+Maximum number of records after thinning: 185
+Number of data.frames with max records: 2
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Nov  5 12:31:44 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+15.177 2.632 18.169 0 0
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+2793	2812	2822	2841	2846
+1	1	1	1	1
+Maximum number of records after thinning: 2846
+Number of data.frames with max records: 1
+No files written for this run.
+********************************************** 
+ Beginning Spatial Thinning.
+ Script Started at: Thu Nov  5 12:32:04 2020
+
+Thinning Parameter Used (in km): 11
+Number of replicates of thinning script: 5
+
+Elapsed time for thinning completion
+0.026 0.004 0.03 0 0
+
+Number of data.frames per locations retained
+loc.cnt df.freq
+185	186	187
+1	2	2
+Maximum number of records after thinning: 187
+Number of data.frames with max records: 2
+No files written for this run.

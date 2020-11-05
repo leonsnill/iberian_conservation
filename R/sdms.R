@@ -24,7 +24,7 @@ wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian
 setwd(wd)
 
 #species <- "ursusarctos"
-species <- "lynxpardinus"
+species <- "lynxpardinus15"
 
 # -----------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
@@ -194,6 +194,11 @@ names(stm) <- apply(expand.grid(c("tcb", "tcg", "tcw"), c("sos", "pos", "eos")),
 
 
 brick_preds <- brick(list(bioclim, lcf, dem, stm))
+
+if(species_name == "Lynx pardinus"){
+  brick_preds <- crop(brick_preds, mask)
+}
+
 brick_preds <- raster::mask(brick_preds, mask, maskvalue = 0)
 
 # standardise data (z-transformation)
@@ -451,21 +456,26 @@ env_preds_bin <- data.frame(EU[,1:2], sapply(all_models, FUN=function(x){ifelse(
 r_preds <- rasterFromXYZ(img_pred, crs=crs(brick_preds))
 r_preds_bin <- rasterFromXYZ(env_preds_bin, crs=crs(brick_preds))
 
-writeRaster(r_preds, paste0("Data/SDMs/", species, "_SDM_probability_models.tif"), "GTiff")
-writeRaster(r_preds_bin, paste0("Data/SDMs/", species, "_SDM_binary_models.tif"), "GTiff")
+writeRaster(r_preds, paste0("Data/SDMs/", species, "_SDM_probability_models.tif"), "GTiff", overwrite = T)
+writeRaster(r_preds_bin, paste0("Data/SDMs/", species, "_SDM_binary_models.tif"), "GTiff", overwrite = T)
 
 # We make ensembles:    
 env_ensemble <- data.frame(EU[,1:2], make.ensemble(img_pred[,-c(1:2)], unlist(crossval_perf['TSS',]), unlist(crossval_perf['thresh',])))
 
 # Make rasters from ensemble predictions:
 r_ens <- rasterFromXYZ(env_ensemble, crs=crs(brick_preds))
-writeRaster(r_ens, paste0("Data/SDMs/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"), "GTiff")
+writeRaster(r_ens, paste0("Data/SDMs/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"), "GTiff", overwrite = T)
 
 # Binarise ensemble predictions
 env_ensemble_bin <- data.frame(EU[,1:2], sapply(c('mean_prob', 'median_prob', 'wmean_prob'), FUN=function(x){ifelse(env_ensemble[,x]>= unlist(ensemble_perf['thresh',x]),1,0)}))
 
 # Make rasters:
 r_ens_bin <- rasterFromXYZ(env_ensemble_bin, crs=crs(brick_preds))
-writeRaster(r_ens_bin, paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_wmn.tif"), "GTiff")
+writeRaster(r_ens_bin, paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_wmn.tif"), "GTiff", overwrite = T)
 
+spplot(stack("Data/SDMs/lynxpardinus15_SDM_probability_models.tif"))
+spplot(stack("Data/SDMs/lynxpardinus15_SDM_binary_models.tif"))
+
+spplot(stack("Data/SDMs/lynxpardinus15_SDM_ensembles_binary_mn_md_wmn.tif"))
+spplot(stack("Data/SDMs/lynxpardinus_SDM_ensembles_binary_mn_md_wmn.tif"))
 
