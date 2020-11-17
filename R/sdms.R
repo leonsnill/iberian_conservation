@@ -24,7 +24,7 @@ wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian
 setwd(wd)
 
 #species <- "ursusarctos"
-species <- "lynxpardinus15"
+species <- "lynxpardinus"
 
 # -----------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
@@ -216,7 +216,7 @@ r_pre <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinne
 r_abs <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_absence_thinned.tif"))
 
 # mask absences closer than specified buffer to presences
-buffer <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinned_buffer_50km.tif"))
+buffer <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinned_buffer.tif"))
 r_abs <- mask(r_abs, buffer, maskvalue=1)
 r_pre[r_pre == 1] <- 2
 
@@ -418,6 +418,7 @@ make.ensemble <- function(preds, eval_metric, thresh){
              sd_prob = apply(preds,1,sd))
 }
 
+
 # Make ensemble predictions:
 ensemble_preds <- make.ensemble(crossval_preds,
                                 unlist(crossval_perf['TSS',]),
@@ -473,9 +474,12 @@ env_ensemble_bin <- data.frame(EU[,1:2], sapply(c('mean_prob', 'median_prob', 'w
 r_ens_bin <- rasterFromXYZ(env_ensemble_bin, crs=crs(brick_preds))
 writeRaster(r_ens_bin, paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_wmn.tif"), "GTiff", overwrite = T)
 
-spplot(stack("Data/SDMs/lynxpardinus15_SDM_probability_models.tif"))
-spplot(stack("Data/SDMs/lynxpardinus15_SDM_binary_models.tif"))
+# quick visual checks (just temporarily to keep)
+prob_models <- stack("Data/SDMs/lynxpardinus_SDM_probability_models.tif")
+bin_models <- stack("Data/SDMs/lynxpardinus_SDM_binary_models.tif")
+names(prob_models) <- c("GLM", "GAM", "Bioclim", "BRT", "GP")
+names(bin_models) <- c("GLM", "GAM", "Bioclim", "BRT", "GP")
+spplot(prob_models)
+spplot(bin_models)
 
-spplot(stack("Data/SDMs/lynxpardinus15_SDM_ensembles_binary_mn_md_wmn.tif"))
-spplot(stack("Data/SDMs/lynxpardinus_SDM_ensembles_binary_mn_md_wmn.tif"))
 

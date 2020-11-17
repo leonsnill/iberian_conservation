@@ -35,15 +35,13 @@ df <- occ_search(scientificName = species_name, return='data', limit=100000,
                         basisOfRecord = "HUMAN_OBSERVATION",
                         geometry = roi,
                         year = '1980, 2020')
-df <- df$data
+#df <- df$data
 
 # write to .csv
-#write.csv(df, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
+write.csv(df, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
 
 # read 
-df <- read_csv(paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
-
-output_name <- "lynxpardinus15"
+df <- read.csv(paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
 
 # ----------------------------------------------------------------------------------------------------
 # VISUALIZE DATA
@@ -191,7 +189,10 @@ writeRaster(img_absence, paste0("Data/GBIF/", output_name, "_europe_1990-2020_ab
 # CREATE BUFFER AROUND PRESENCES
 # ----------------------------------------------------------------------------------------------------
 buffer_presence <- raster::buffer(img_presence, width=50000)
-writeRaster(buffer_presence, paste0("Data/GBIF/", output_name, "_europe_1990-2020_presence_thinned_buffer_50km.tif"), driver="GTiff", overwrite = TRUE)
+if(species_name == "Lynx pardinus"){
+  buffer_presence <- raster::buffer(img_presence, width=15000)
+}
+writeRaster(buffer_presence, paste0("Data/GBIF/", output_name, "_europe_1990-2020_presence_thinned_buffer.tif"), driver="GTiff", overwrite = TRUE)
 
 
 
