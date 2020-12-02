@@ -56,17 +56,19 @@ gdal.Translate(out, gdal.Open(f_dem), options=opt)
 # ----------------------------------------------------------------------------------------------------------------------
 # LAND COVER TO FRACTION COVER
 # ----------------------------------------------------------------------------------------------------------------------
-os.chdir('C:/Users/Leon/Google Drive/01_MSc_GCG/MSc6_GCIB/ursus_arctos')
+#os.chdir('C:/Users/Leon/Google Drive/01_MSc_GCG/MSc6_GCIB/ursus_arctos')
 # reference image
-reference_img = 'git/ursus_arctos/Data/Mask/EUROPE_MASK_10km.tif'
-roi = raster.extent([reference_img])
+reference_img = r"Data\Mask\IBERIA_MASK_10km.tif"
+xmin, ymax, xmax, ymin = raster.extent([gdal.Open(reference_img)])
 
-outpath = '/Users/leonnill/Documents/MSc_GCG/MSc_GCIB/LC_Fractions'
-lc_file = '/Users/leonnill/Documents/LSNGIS/Data/Europe_LC_2015_Pflugmacher/europe_landcover_2015_RSE-Full3.tif'
-lc = gdal.Open(lc_file)
+warp = gdal.Warp(r"Data\Mask\artifical_iberia_fraction_10km.tif", r"Data\Mask\artificial_mask.tif", xRes=10000, yRes=10000,
+          outputBounds=[xmin, ymin, xmax, ymax], resampleAlg='average', outputType=gdal.GDT_Int16, srcNodata=-9999)
+warp = None
+
+
 
 # read in lc-dataset and create binary mask from chosen lc-classes
-lc_arr = gdal.Open(lc_file).ReadAsArray()
+lc_arr = gdal.Open(r"Data\Mask\artificial_mask.tif").ReadAsArray()
 binary = np.where((lc_arr == 4) | (lc_arr == 5) | (lc_arr == 6), 1000, 0)
 binary = binary.astype(np.int)
 raster.array_to_geotiff(binary, outpath+'/binary.tif', inp_gdal=lc)
