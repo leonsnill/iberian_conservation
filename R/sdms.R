@@ -23,8 +23,8 @@ library(GRaF)
 wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
 setwd(wd)
 
-#species <- "ursusarctos"
-species <- "lynxpardinus"
+species <- "ursusarctos"
+#species <- "lynxpardinus"
 
 # -----------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
@@ -281,16 +281,19 @@ m_glm <- step(
   glm(as.formula(paste('species ~', paste(pred_sel, paste0('+ I(', pred_sel,'^2)'), collapse=' + '))),
       family='binomial', data = df_sub, weights = weight)
 )
+saveRDS(m_glm, paste0("R/models/", species, "_m_glm.rds"))
 
 
 # (1.2) Generalized Additive Models (GAMs)
 m_gam <- gam( as.formula(
   paste('species ~', paste(paste0('s(',pred_sel,',df=4)'), collapse=' + '))),
   family='binomial', data=df_sub, weights = weight)
+saveRDS(m_gam, paste0("R/models/", species, "_m_gam.rds"))
 
 
 # (1.3) BIOCLIM
 m_bc <- bioclim(brick_preds[[pred_sel]], df_sub[df_sub$species == 1, c('x','y')])
+saveRDS(m_bc, paste0("R/models/", species, "_m_bc.rds"))
 
 
 # selected machine learners require equal sample size of presence-absence
@@ -321,6 +324,9 @@ for (i in 1:10) {
   m_gp <- GRaF::graf(y = df_sub_i$species, x = df_sub_i[,pred_sel], opt.l = TRUE, method = "Laplace")
   assign(paste0("m_gp", i), m_gp)
   c_gp[i] <- paste0("m_gp", i)
+  
+  saveRDS(m_brt, paste0("R/models/", species, "_m_brt", i,".rds"))
+  saveRDS(m_gp, paste0("R/models/", species, "_m_gp", i,".rds"))
 }
 
 
