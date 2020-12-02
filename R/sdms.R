@@ -479,11 +479,3 @@ env_ensemble_bin <- data.frame(EU[,1:2], sapply(c('mean_prob', 'median_prob', 'w
 # Make rasters:
 r_ens_bin <- rasterFromXYZ(env_ensemble_bin, crs=crs(brick_preds))
 writeRaster(r_ens_bin, paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_wmn.tif"), "GTiff", overwrite = T)
-
-# quick visual checks (just temporarily to keep)
-prob_models <- stack("Data/SDMs/lynxpardinus_SDM_probability_models.tif")
-bin_models <- stack("Data/SDMs/lynxpardinus_SDM_binary_models.tif")
-names(prob_models) <- c("GLM", "GAM", "Bioclim", "BRT", "GP")
-names(bin_models) <- c("GLM", "GAM", "Bioclim", "BRT", "GP")
-spplot(prob_models)
-spplot(bin_models)
