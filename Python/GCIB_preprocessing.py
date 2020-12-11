@@ -61,7 +61,7 @@ gdal.Translate(out, gdal.Open(f_dem), options=opt)
 reference_img = r"Data\Mask\IBERIA_MASK_10km.tif"
 xmin, ymax, xmax, ymin = raster.extent([gdal.Open(reference_img)])
 
-warp = gdal.Warp(r"Data\Mask\artifical_iberia_fraction_10km.tif", r"Data\Mask\artificial_mask.tif", xRes=10000, yRes=10000,
+warp = gdal.Warp(r"Data\Mask\roads-train-artificial_iberia_fraction_10km.tif", r"Data\Mask\roads-train-artificial_iberia_mask.tif", xRes=10000, yRes=10000,
           outputBounds=[xmin, ymin, xmax, ymax], resampleAlg='average', outputType=gdal.GDT_Int16, srcNodata=-9999)
 warp = None
 

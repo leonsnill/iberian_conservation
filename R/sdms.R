@@ -242,7 +242,7 @@ y_name <- "species"
 #corrplot(cor_mat, tl.srt=45, tl.col="black")
 
 # apply variable selection
-var_sel <- mecofun::select07_cv(X = df[, X_names], y = df[, y_name], kfold = 5, threshold = 0.5)
+var_sel <- mecofun::select07_cv(X = df[, X_names], y = df[, y_name], kfold = 5, threshold = 0.7)
 pred_sel <- var_sel$pred_sel
 print(pred_sel)
 
