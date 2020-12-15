@@ -15,7 +15,10 @@ library(MigClim)
 
 setwd("/Users/leonnill/Documents/MSc_GCG/MSc_GCIB")
 
-sdm <- brick("SDMs/SDM_ensembles_mn_md_wmn_cav_sdp.tif")
+species <- "ursusarctos"
+#species <- "lynxpardinus"
+
+sdm <- brick(paste0("Data/RedList/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"))
 sdm <- sdm[[3]] * 1000
 sdm <- as.integer(sdm)
 sdm[is.na(sdm)] <- 0
@@ -23,7 +26,7 @@ sdm[is.na(sdm)] <- 0
 suit <- sdm
 suit[suit < 0.52*1000] <- 0
 
-init_dist <- raster("GBIF/GBIF_ursusarctos_europe_1990-2020_presence_10km.tif")
+init_dist <- raster(paste0("Data/SDMs/", species, "_rasterized_10km.tif"))
 init_dist <- as.data.frame(init_dist, xy=TRUE)
 init_dist <- drop_na(init_dist)
 init_dist <- rasterFromXYZ(init_dist, crs=crs(sdm))
@@ -49,9 +52,17 @@ mask <- projectRaster(mask, init_dist, method="ngb")
 
 # kernel (in cell units)
 dispersal <- 2
+if(species == "lynxpardinus"){
+  dispersal <- 1.47 #(Ferreras et al. 2004)
+}
 distances <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)  # given the resolution of 10x10km -> e.g. 1 = 10km
 dispn <- exp(-(distances/dispersal))
 
+# age of sexual maturaty
+matAge <- 6 # sexual maturity of females between 4-8 years
+if(species == "lynxpardinus"){
+  matAge <- 3 #(Palomares et al. 2005)
+}
 
 # MigClim simulation
 MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
@@ -60,17 +71,17 @@ MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
                 envChgSteps=1,
                 dispSteps=10,
                 replicateNb=1,
-                iniMatAge = 4,  # sexual maturity of females between 4-8 years
-                propaguleProd = c(0.7, 0.7, 0.7, 0.5, 0.5),
+                iniMatAge = matAge,
+                #propaguleProd = c(0.7, 0.7, 0.7, 0.5, 0.5),
                 barrier = as.data.frame(mask),
                 barrierType = "weak",
                 dispKernel = dispn,
-                simulName="ursus_arctos_disp",
+                simulName=paste0(species, "_disp"),
                 overWrite=T)
 
 
 # Map colonisation ability
-res <- raster("ursus_arctos_disp/ursus_arctos_disp_raster.asc")
+res <- raster(paste0(species, "_disp/", species, "_disp_raster.asc"))
 res[res == 30000] <- 111
 res[res < 0] <- -1
 res[res == 1] <- 1
@@ -79,10 +90,10 @@ res[res == 0] <- NA
 crs(res) <- crs(lcf_a)
 
 # crop to Iberian Peninsula
-iberia <- raster("Watermask/IBERIA_MASK_10km.tif")
+iberia <- raster("Data/Mask/IBERIA_MASK_10km.tif")
 res_crop <- crop(res, iberia)
 res_crop <- res_crop-1
 res_crop[res_crop == -2] <- -1
 
-writeRaster(res_crop, "dispersal_ursus_arctos_10a_onlylandbarrier.tif", format="GTiff", overwrite = TRUE)
+writeRaster(res_crop, paste0("dispersal_", species, "_10a_onlylandbarrier.tif"), format="GTiff", overwrite = TRUE)
 
