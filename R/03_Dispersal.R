@@ -13,41 +13,44 @@ library(dplyr)
 library(tidyverse)
 library(MigClim)
 
-setwd("/Users/leonnill/Documents/MSc_GCG/MSc_GCIB")
+#setwd("/Users/leonnill/Documents/MSc_GCG/MSc_GCIB")
+setwd("~/Documents/UNI/Master/3.Semester/GCIB/Publishing/processing/iberian_conservation")
 
-species <- "ursusarctos"
-#species <- "lynxpardinus"
+#species <- "ursusarctos"
+species <- "lynxpardinus"
+mask <- raster("Data/Mask/IBERIA_MASK_10km.tif")
 
-sdm <- brick(paste0("Data/RedList/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"))
+sdm <- brick(paste0("Data/SDMs/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"))
+sdm <- projectRaster(sdm, mask)
 sdm <- sdm[[3]] * 1000
 sdm <- as.integer(sdm)
 sdm[is.na(sdm)] <- 0
 
 suit <- sdm
-suit[suit < 0.52*1000] <- 0
+threshold <- 0.28 # optimal threshold for lynx 
+suit[suit < threshold*1000] <- 0
+suit <- mask(suit, mask, maskvalue = 0)
 
-init_dist <- raster(paste0("Data/SDMs/", species, "_rasterized_10km.tif"))
+init_dist <- raster(paste0("Data/RedList/", species, "_rasterized_10km.tif"))
+init_dist <- projectRaster(init_dist, mask)
+init_dist <- mask(init_dist, mask, maskvalue = 0)
 init_dist <- as.data.frame(init_dist, xy=TRUE)
-init_dist <- drop_na(init_dist)
+#init_dist <- drop_na(init_dist)
 init_dist <- rasterFromXYZ(init_dist, crs=crs(sdm))
 init_dist[is.na(init_dist)] <- 0
 
 
 # mask
-lcf_a <- raster("LC_Fractions/europe_lc_fraction_artificial_10km.tif")/1000
-lcf_h <- raster("LC_Fractions/europe_lc_fraction_highveg_10km.tif")/1000
-lcf_l <- raster("LC_Fractions/europe_lc_fraction_lowveg_10km.tif")/1000
-motorways <- raster("Watermask/EUROPE_MASK_10km_MOTORWAYS.tif")
+artificial <- raster("Data/Mask/roads-train-artificial_iberia_fraction_10km.tif")/1000
+artificial <- mask(artificial, mask, maskvalue = 0)
 
 # Choose mask
-mask <- Which(lcf_a > 0.05 | motorways == 2)  # Scenario Artficial + Motorways
-mask <- Which(lcf_a > 0.05)  # Scenario Artifical
+bar_mask <- Which(artificial > 0.05)  # Scenario 
 
-mask <- as.data.frame(mask, xy=TRUE)
-mask <- drop_na(mask)
-mask <- rasterFromXYZ(mask, crs=crs(sdm))
-mask[is.na(mask)] <- 0
-mask <- projectRaster(mask, init_dist, method="ngb")
+bar_mask <- as.data.frame(bar_mask, xy=TRUE)
+bar_mask <- drop_na(bar_mask)
+bar_mask <- rasterFromXYZ(bar_mask, crs=crs(sdm))
+bar_mask[is.na(bar_mask)] <- 0
 
 
 # kernel (in cell units)
@@ -73,7 +76,7 @@ MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
                 replicateNb=1,
                 iniMatAge = matAge,
                 #propaguleProd = c(0.7, 0.7, 0.7, 0.5, 0.5),
-                barrier = as.data.frame(mask),
+                barrier = as.data.frame(bar_mask),
                 barrierType = "weak",
                 dispKernel = dispn,
                 simulName=paste0(species, "_disp"),
