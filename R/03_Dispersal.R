@@ -30,14 +30,16 @@ suit <- sdm
 threshold <- 0.28 # optimal threshold for lynx 
 suit[suit < threshold*1000] <- 0
 suit <- mask(suit, mask, maskvalue = 0)
+suit[is.na(suit)] <- 0
+
 
 init_dist <- raster(paste0("Data/RedList/", species, "_rasterized_10km.tif"))
 init_dist <- projectRaster(init_dist, mask)
 init_dist <- mask(init_dist, mask, maskvalue = 0)
 init_dist <- as.data.frame(init_dist, xy=TRUE)
-#init_dist <- drop_na(init_dist)
 init_dist <- rasterFromXYZ(init_dist, crs=crs(sdm))
 init_dist[is.na(init_dist)] <- 0
+init_dist[init_dist != 0] <- 1
 
 
 # mask
