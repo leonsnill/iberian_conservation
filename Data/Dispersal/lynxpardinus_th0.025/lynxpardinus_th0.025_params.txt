@@ -1,0 +1,17 @@
+nrRows 103
+nrCols 127
+iniDist lynxpardinus_th0.025.InitialDist
+hsMap lynxpardinus_th0.025.HSmap
+rcThreshold 0
+envChgSteps 1
+dispSteps 10
+dispDist 9
+dispKernel 0.506479156155757 0.256521135620248 0.129922608305059 0.0658030930199015 0.0333278950251585 0.0168798841487899 0.00854930947968605 0.00433004705098581 0.00219307857649801
+barrier lynxpardinus_th0.025.Barrier
+barrierType weak
+iniMatAge 3
+fullMatAge 4
+propaguleProd 1
+fullOutput false
+replicateNb 1
+simulName lynxpardinus_th0.025

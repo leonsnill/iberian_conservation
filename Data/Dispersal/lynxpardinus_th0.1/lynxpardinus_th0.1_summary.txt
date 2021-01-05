@@ -1,2 +1,2 @@
 simulName	iniCount	noDispCount	univDispCount	occupiedCount	absentCount	totColonized	totDecolonized	totLDDsuccess	runTime
-lynxpardinus_disp	17	16	1262	945	12136	929	1	0	0
+lynxpardinus_th0.1	32	30	1634	1497	11584	1467	2	0	0

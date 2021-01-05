@@ -83,13 +83,15 @@ artificial <- raster("Data/Mask/roads-train-artificial_iberia_fraction_10km.tif"
 artificial <- mask(artificial, mask, maskvalue = 0)
 
 # define scenario based on mask
-bar_mask <- as.integer(Which(artificial > 0.05))  # Scenario 
+sel_th <- 0.025
+bar_mask <- as.integer(Which(artificial > sel_th))  # Scenario (0.025, 0.05, 0.1, 0.25)
 bar_mask[is.na(bar_mask)] <- 0
 
 
 # ----------------------------------------------------------------------------------------------------
 # RUN MODEL
 # ----------------------------------------------------------------------------------------------------
+setwd(paste0(getwd(), "/Data/Dispersal"))
 # MigClim simulation
 MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
                 hsMap = as.data.frame(sdm),
@@ -102,7 +104,7 @@ MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
                 barrier = as.data.frame(bar_mask),
                 barrierType = "weak",
                 dispKernel = dispn,
-                simulName=paste0(species, "_disp"),
+                simulName=paste0(species, "_th", toString(sel_th)),
                 overWrite=T)
 
 
@@ -110,45 +112,52 @@ MigClim.migrate(iniDist = as.data.frame(init_dist, xy = TRUE),
 # CAST TO RASTER
 # ----------------------------------------------------------------------------------------------------
 # Map colonisation ability
-res <- raster(paste0(species, "_disp/", species, "_disp_raster.asc"))
-res[res == 30000] <- 111
-res[res < 0] <- -1
-res[res == 1] <- 1
-res[res > 1] <- res[res > 1]-99
-res[res == 0] <- NA
+res <- raster(paste0(species, "_th", toString(sel_th), "/",species, "_th", toString(sel_th), "_raster.asc"))
+# reclassify
+rules <- c(0,-999, #cell has never been occupied
+           -101,-1, #cell decolonized
+           1,0, #stable: cells that were initially occupied and remained occupied
+           101,1, #cell colonized in year 1
+           102,2, #cell colonized in year 2
+           103,3, #cell colonized in year 3
+           104,4, #cell colonized in year 4
+           105,5, #cell colonized in year 5
+           106,6, #cell colonized in year 5
+           107,7, #cell colonized in year 5
+           108,8, #cell colonized in year 5
+           109,9, #cell colonized in year 5
+           110,10, #cell colonized in year 5
+           30000,20) #potentially suitable cells that remained unoccupied
+rules <- matrix(rules, ncol=2, byrow=T)
+res <- reclassify(res, rules)
 crs(res) <- coordsys
+res <- mask(res, mask, maskvalue=0)
 
-writeRaster(res, paste0("dispersal_", species, "_10a_onlylandbarrier.tif"), format="GTiff", overwrite = TRUE)
-
-
-
-
+writeRaster(res, paste0(species, "_th", toString(sel_th), "/",species, "_th", toString(sel_th), ".tif"), 
+            format="GTiff", overwrite = TRUE)
 
 
+# ---- Plot
+cls1 <- c("grey60", 'darkred',
+         heat.colors(10), 'pink')
+legend_colon1 <- c("Never Occupied", "Initial",
+                  "1 year", "2 years", "3 years", "4 years", "5 years",
+                  "6 years", "7 years", "8 years", "9 years", "10 years",
+                  "Suitable, but unoccupied")
+cls2 <- c("grey60", "blue", 'darkred',
+          heat.colors(10), 'pink')
+legend_colon2 <- c("Never Occupied", "Decolonised", "Initial",
+                   "1 year", "2 years", "3 years", "4 years", "5 years",
+                   "6 years", "7 years", "8 years", "9 years", "10 years",
+                   "Suitable, but unoccupied")
 
+cls <- cls1
+legend_colon <- legend_colon1
+res <- as.factor(res)
+rat <- levels(res)[[1]]
+rat[["Colonisation"]] <- legend_colon
+levels(res) <- rat
+library(rasterVis)
 
+levelplot(res, margin=F, scales=list(draw=FALSE), col.regions=cls, add=TRUE)
 
-
-
-
-############
-#init_dist <- projectRaster(init_dist, mask)
-#init_dist <- mask(init_dist, mask, maskvalue = 0)
-#init_dist <- as.data.frame(init_dist, xy=TRUE)
-#init_dist <- drop_na(init_dist)
-#init_dist <- rasterFromXYZ(init_dist, crs=coordsys)
-#init_dist[is.na(init_dist)] <- 0
-#init_dist[init_dist == 0] <- 0
-#init_dist[init_dist != 0] <- 1
-
-#bar_mask <- as.data.frame(bar_mask, xy=TRUE)
-#bar_mask <- drop_na(bar_mask)
-#bar_mask <- rasterFromXYZ(bar_mask, crs=coordsys)
-#bar_mask[is.na(bar_mask)] <- 0
-
-
-# crop to Iberian Peninsula
-iberia <- raster("Data/Mask/IBERIA_MASK_10km.tif")
-res_crop <- crop(res, iberia)
-res_crop <- res_crop-1
-res_crop[res_crop == -2] <- -1
