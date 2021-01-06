@@ -17,8 +17,8 @@ library(MigClim)
 setwd("C:\\Users\\Leon\\Google Drive\\03_LSNRS\\Projects\\Iberian_Conservation\\iberian_conservation")
 #setwd("~/Documents/UNI/Master/3.Semester/GCIB/Publishing/processing/iberian_conservation")
 
-species <- "ursusarctos"
-#species <- "lynxpardinus"
+#species <- "ursusarctos"
+species <- "lynxpardinus"
 mask <- raster("Data/Mask/IBERIA_MASK_10km.tif")
 sdm <- brick(paste0("Data/SDMs/", species, "_SDM_ensemble_mn_md_wmn_cav_sdp.tif"))
 sdm <- projectRaster(sdm, mask)
@@ -83,7 +83,7 @@ artificial <- raster("Data/Mask/roads-train-artificial_iberia_fraction_10km.tif"
 artificial <- mask(artificial, mask, maskvalue = 0)
 
 # define scenario based on mask
-sel_th <- 0.025
+sel_th <- 0.05
 bar_mask <- as.integer(Which(artificial > sel_th))  # Scenario (0.025, 0.05, 0.1, 0.25)
 bar_mask[is.na(bar_mask)] <- 0
 
@@ -131,6 +131,7 @@ rules <- c(0,-999, #cell has never been occupied
 rules <- matrix(rules, ncol=2, byrow=T)
 res <- reclassify(res, rules)
 crs(res) <- coordsys
+res[(res != 0) & (init_dist == 1)] <- -1
 res <- mask(res, mask, maskvalue=0)
 
 writeRaster(res, paste0(species, "_th", toString(sel_th), "/",species, "_th", toString(sel_th), ".tif"), 
@@ -151,13 +152,15 @@ legend_colon2 <- c("Never Occupied", "Decolonised", "Initial",
                    "6 years", "7 years", "8 years", "9 years", "10 years",
                    "Suitable, but unoccupied")
 
-cls <- cls1
-legend_colon <- legend_colon1
+cls <- cls2
+legend_colon <- legend_colon2
 res <- as.factor(res)
 rat <- levels(res)[[1]]
 rat[["Colonisation"]] <- legend_colon
 levels(res) <- rat
 library(rasterVis)
-
-levelplot(res, margin=F, scales=list(draw=FALSE), col.regions=cls, add=TRUE)
+png(file=paste0(species, "_th", toString(sel_th), "/", "plot_th", toString(sel_th), ".png"),
+    width=1000, height=600)
+levelplot(res, margin=F, scales=list(draw=FALSE), col.regions=cls)
+dev.off()
 

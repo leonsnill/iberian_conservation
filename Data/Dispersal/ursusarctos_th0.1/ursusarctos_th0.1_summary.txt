@@ -1,2 +1,2 @@
 simulName	iniCount	noDispCount	univDispCount	occupiedCount	absentCount	totColonized	totDecolonized	totLDDsuccess	runTime
-ursusarctos_th0.1	84	84	888	813	12268	729	0	0	0
+ursusarctos_th0.1	84	84	888	797	12284	713	0	0	0
