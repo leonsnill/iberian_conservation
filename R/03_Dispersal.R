@@ -14,8 +14,8 @@ library(dplyr)
 library(tidyverse)
 library(MigClim)
 
-setwd("C:\\Users\\Leon\\Google Drive\\03_LSNRS\\Projects\\Iberian_Conservation\\iberian_conservation")
-#setwd("~/Documents/UNI/Master/3.Semester/GCIB/Publishing/processing/iberian_conservation")
+#setwd("C:\\Users\\Leon\\Google Drive\\03_LSNRS\\Projects\\Iberian_Conservation\\iberian_conservation")
+setwd("~/Documents/UNI/Master/3.Semester/GCIB/Publishing/processing/iberian_conservation")
 
 #species <- "ursusarctos"
 species <- "lynxpardinus"
