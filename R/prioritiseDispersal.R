@@ -14,7 +14,7 @@ library(raster)
 #setwd('data/Projects/Emmy_BIOPIC/WPX_restoration/Pratzer_Nill_IberianConservation')
 setwd("~/Documents/UNI/Master/3.Semester/GCIB/Publishing/processing/iberian_conservation")
 
-#species <- "ursusarctos"
+species <- "ursusarctos"
 species <- "lynxpardinus"
 
 # ----------------------------------------------------------------------------------------------------
@@ -26,6 +26,7 @@ r_ens_bin <- raster(paste0("Data/SDMs/", species, "_SDM_ensembles_binary_mn_md_w
 
 r_ens_thresh <- r_ens
 values(r_ens_thresh)[values(r_ens_bin)<1] <- NA
+r_ens_thresh <- projectRaster(r_ens_thresh, mask)
 
 # Select top 15% as target areas
 plot(r_ens_thresh  >= quantile(r_ens_thresh, probs=0.85))
