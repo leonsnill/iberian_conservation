@@ -1,11 +1,14 @@
 import os
 import cartopy
 import cartopy.crs as ccrs
+import cartopy.geodesic as cgeo
+import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 from osgeo import gdal, osr
 import numpy as np
 import matplotlib as mpl
 import matplotlib.ticker as mticker
+from matplotlib import colors
 from mpl_toolkits.axes_grid1 import AxesGrid
 from cartopy.mpl.geoaxes import GeoAxes
 plt.rcParams.update({'font.size': 12})
@@ -14,9 +17,6 @@ plt.rcParams.update({'font.size': 12})
 # ----------------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
 # ----------------------------------------------------------------------------------------------------------------------
-import cartopy.geodesic as cgeo
-
-
 def _axes_to_lonlat(ax, coords):
     """(lon, lat) from axes coordinates."""
     display = ax.transAxes.transform(coords)
@@ -616,7 +616,7 @@ def get_colmap(a):
     return vmin, vmax, colmap, loc_ticks
 
 
-ds_z = gdal.Open(r"C:\Users\Leon\Google Drive\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
+ds_z = gdal.Open(r"E:\Meine Ablage\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
 z_data = ds_z.ReadAsArray()
 from matplotlib.colors import LightSource
 # Generate the hillshaded intensity
@@ -632,13 +632,14 @@ mask = ds_mask.ReadAsArray()
 # extent and background
 ext = (2590000.0, 3800000.0, 1520000.0, 2520000.0)
 
-
 w = 7
 p_left = 0.25
 p_right = 0.25
 w_cbar = 0.125
 cbar_aspect = (w - p_left - p_right) / w_cbar
 
+
+# original version with 4 scenarios
 fig, axes = plt.subplots(2, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(7, 6.5))  # 7, 13
 fig.subplots_adjust(hspace=.05, wspace=.05)
 for i, ax in enumerate(axes.flatten()):
@@ -696,7 +697,7 @@ cbar = fig.colorbar(im, cax=ax_cb, orientation='horizontal')
 
 cbar.set_label('Year of Occupation', size=10)
 cbar.set_ticks(loc_ticks2)
-cbar.ax.set_xticklabels(['Left', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Suitable'])
+cbar.ax.set_xticklabels(['Decolonised', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncolonised'])
 cbar.ax.tick_params(labelsize=10)
 #plt.colorbar(im, ax=[ax_cb], location='left')
 
@@ -704,7 +705,141 @@ plt.savefig("Plots/fig_dispersal_lynx.pdf", dpi=300, bbox_inches='tight')
 plt.close()
 
 
+# new version with 2 scenarios
+#l_imgs = [disp1_bear, disp4_bear]
+l_imgs = [disp1_lynx, disp4_lynx]
+l_imgs = [np.where(x < -1, np.NaN, x) for x in l_imgs]
+l_imgs = [np.where(x == 20, 11, x) for x in l_imgs]
 
+subfig_names = ['A', 'B']
+threshold_names = ['> 2.5%', '> 25%']
+
+fig, axes = plt.subplots(1, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(8, 5))  # 7, 13
+fig.subplots_adjust(hspace=.05, wspace=.05)
+for i, ax in enumerate(axes.flatten()):
+    ax.set_extent(ext, crs=ccrs.epsg(3035))
+    ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=1)
+    ax.add_feature(cartopy.feature.COASTLINE, lw=1, linestyle='-', zorder=2)
+    ax.add_feature(cartopy.feature.BORDERS, lw=1, linestyle='-', zorder=2)
+
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5, alpha=0.8, linestyle='-', color='grey', zorder=5)
+    gl.left_labels = False
+    gl.bottom_labels = False
+    gl.top_labels = False
+    gl.right_labels = False
+    if (i == 0) | (i == 1):
+        gl.top_labels = True
+    if (i == 0) | (i == 2) | (i == 4) | (i == 6):
+        gl.left_labels = True
+    gl.xlocator = mticker.FixedLocator([-10, -8, -6, -4, -2, 0, 2])
+    gl.ylocator = mticker.FixedLocator([36, 38, 40, 42, 44, 46])
+    gl.xlabel_style = {'size': 8, 'color': 'black'}
+    gl.ylabel_style = {'size': 8, 'color': 'black'}
+
+    # raster imgs
+    ax.imshow(rgb, extent=ext_min_max(ds_z), origin='upper', alpha=0.75)
+    temp_img = l_imgs[i]
+    vmin, vmax, temp_colmap, loc_ticks = get_colmap(temp_img)
+    im = ax.imshow(temp_img, cmap=temp_colmap,
+                   extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+                   origin='upper', zorder=1, alpha=0.75, vmin=vmin, vmax=vmax)
+    if i == 0:
+        vmin, vmax, temp_colmap, loc_ticks2 = get_colmap(temp_img)
+        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), orientation='horizontal',
+                            fraction=0.08, pad=0.01, aspect=cbar_aspect)
+    #scale_bar(ax, (0.05, 0.05), 250, zorder=6)
+    props = dict(boxstyle='square', facecolor='white', alpha=1)
+    ax.text(0.95, 0.05, threshold_names[i], transform=ax.transAxes, fontsize=14,
+             verticalalignment='bottom', horizontalalignment='right',
+             bbox=props, zorder=6)
+    ax.text(0.05, 0.95, subfig_names[i], transform=ax.transAxes, fontsize=18,
+             verticalalignment='top', horizontalalignment='left',
+             fontweight='bold', zorder=6)
+
+'''
+p0 = axes.flatten()[6].get_position().get_points().flatten()
+p1 = axes.flatten()[7].get_position().get_points().flatten()
+ax_cbar = fig.add_axes([p0[0], 0.05, p1[2]-p0[0], 0.025])
+ax_cb = ax_cbar.append_axes('bottom', size="2%", pad=0.5)
+cbar = fig.colorbar(im, cax=ax_cb, orientation='horizontal')
+'''
+
+#cbar = fig.colorbar(im, ax=axes.ravel().tolist(), orientation='horizontal',
+#                    fraction=0.08, pad=0.01, aspect=cbar_aspect)
+
+cbar.set_label('Year of recolonisation', size=10)
+cbar.set_ticks(loc_ticks2)
+cbar.ax.set_xticklabels(['Decol.', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncol.'])
+cbar.ax.tick_params(labelsize=10)
+#plt.colorbar(im, ax=[ax_cb], location='left')
+
+plt.savefig("Plots/fig_dispersal_lynx_v2.pdf", dpi=300, bbox_inches='tight')
+plt.close()
+
+
+
+
+# -----------------
+# Priorisation
+# -----------------
+vague_bear = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\bear\dispersal_vague_noPA_repro.tif").ReadAsArray()
+vague_lynx = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\lynx\dispersal_vague_noPA_repro.tif").ReadAsArray()
+low_bear = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\bear\low_colonize_repro.tif").ReadAsArray()
+low_lynx = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\lynx\low_colonize_repro.tif").ReadAsArray()
+
+l_imgs = [vague_bear, vague_lynx, low_bear, low_lynx]
+l_imgs = [np.where(x == 0, np.NaN, x) for x in l_imgs]
+
+subfig_names = ['A', 'B']
+threshold_names = ['> 2.5%', '> 25%']
+
+fig, axes = plt.subplots(1, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(8, 5))  # 7, 13
+fig.subplots_adjust(hspace=.05, wspace=.05)
+for i, ax in enumerate(axes.flatten()):
+    ax.set_extent(ext, crs=ccrs.epsg(3035))
+    ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=1)
+    ax.add_feature(cartopy.feature.COASTLINE, lw=1, linestyle='-', zorder=2)
+    ax.add_feature(cartopy.feature.BORDERS, lw=1, linestyle='-', zorder=2)
+
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5, alpha=0.8, linestyle='-', color='grey', zorder=5)
+    gl.left_labels = False
+    gl.bottom_labels = False
+    gl.top_labels = False
+    gl.right_labels = False
+    if (i == 0) | (i == 1):
+        gl.top_labels = True
+    if (i == 0) | (i == 2) | (i == 4) | (i == 6):
+        gl.left_labels = True
+    gl.xlocator = mticker.FixedLocator([-10, -8, -6, -4, -2, 0, 2])
+    gl.ylocator = mticker.FixedLocator([36, 38, 40, 42, 44, 46])
+    gl.xlabel_style = {'size': 8, 'color': 'black'}
+    gl.ylabel_style = {'size': 8, 'color': 'black'}
+
+    # raster imgs
+    ax.imshow(rgb, extent=ext_min_max(ds_z), origin='upper', alpha=0.75)
+
+ax = axes.flatten()
+im = ax[0].imshow(l_imgs[0], cmap=colors.ListedColormap(['red']),
+               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               origin='upper', zorder=1, alpha=1)
+im2 = ax[0].imshow(l_imgs[1], cmap=colors.ListedColormap(['yellow']),
+               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               origin='upper', zorder=1, alpha=1)
+im3 = ax[1].imshow(l_imgs[2], cmap=colors.ListedColormap(['red']),
+               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               origin='upper', zorder=1, alpha=1)
+im4 = ax[1].imshow(l_imgs[3], cmap=colors.ListedColormap(['yellow']),
+               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               origin='upper', zorder=1, alpha=1)
+
+import matplotlib.patches as mpatches
+patch1 = mpatches.Patch(color='red', label='Ursus arctos')
+patch2 = mpatches.Patch(color='yellow', label='Lynx pardinus')
+all_handles = (patch1, patch2)
+leg = ax[1].legend(handles=all_handles, loc=4, frameon=False, facecolor=None, fontsize=10)
+
+plt.savefig("Plots/fig_prioritisation.pdf", dpi=300, bbox_inches='tight')
+plt.close()
 
 
 
