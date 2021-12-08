@@ -305,7 +305,7 @@ redlist2 = ds_redlist2.ReadAsArray()
 redlist2 = np.where(redlist2 != 1, np.nan, 1)
 
 # hillshade
-ds_z = gdal.Open(r"C:\Users\Leon\Google Drive\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
+ds_z = gdal.Open(r"C:\Users\leonx\Google Drive\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
 z_data = ds_z.ReadAsArray()
 #z_data = np.where(z_data == 0, np.nan, z_data)
 
@@ -400,18 +400,18 @@ scale_bar(ax2, (0.05, 0.05), 250, zorder=6)
 
 props = dict(boxstyle='square', facecolor='white', alpha=1)
 # place a text box in upper left in axes coords
-ax1.text(0.95, 0.95, "Ursus arctos", transform=ax1.transAxes, fontsize=12,
+ax1.text(0.95, 0.95, "Bear", transform=ax1.transAxes, fontsize=12,
         verticalalignment='top', horizontalalignment='right', bbox=props, zorder=6)
-ax2.text(0.95, 0.95, "Lynx pardinus", transform=ax2.transAxes, fontsize=12,
+ax2.text(0.95, 0.95, "Lynx", transform=ax2.transAxes, fontsize=12,
         verticalalignment='top', horizontalalignment='right', bbox=props, zorder=6)
-ax1.text(0.025, 0.975, "A", transform=ax1.transAxes, fontsize=16,
+ax1.text(0.025, 0.975, "a", transform=ax1.transAxes, fontsize=16,
                 verticalalignment='top', horizontalalignment='left',
                 fontweight='bold', zorder=6)
-ax2.text(0.025, 0.975, "B", transform=ax2.transAxes, fontsize=16,
+ax2.text(0.025, 0.975, "b", transform=ax2.transAxes, fontsize=16,
                 verticalalignment='top', horizontalalignment='left',
                 fontweight='bold', zorder=6)
 
-plt.savefig("Plots/fig2_binary.pdf", dpi=300, bbox_inches='tight')
+plt.savefig("Plots/fig2_binary_v2.pdf", dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -492,10 +492,10 @@ im2 = ax2.imshow(img2, cmap='jet', vmin=0, vmax=1, extent=ext_min_max(ds2), orig
 
 props = dict(boxstyle='square', facecolor='white', alpha=0.75)
 # place a text box in upper left in axes coords
-ax1.text(0.025, 0.975, "A", transform=ax1.transAxes, fontsize=16,
+ax1.text(0.025, 0.975, "a", transform=ax1.transAxes, fontsize=16,
                 verticalalignment='top', horizontalalignment='left',
                 fontweight='bold')
-ax2.text(0.025, 0.975, "B", transform=ax2.transAxes, fontsize=16,
+ax2.text(0.025, 0.975, "b", transform=ax2.transAxes, fontsize=16,
                 verticalalignment='top', horizontalalignment='left',
                 fontweight='bold')
 
@@ -520,10 +520,11 @@ plt.close()
 # ======================================================================================================================
 # input
 ds = gdal.Open('Data/SDMs/lynxpardinus_SDM_probability_models.tif')
+ds = gdal.Open('Data/SDMs/ursusarctos_SDM_probability_models.tif')
 img = ds.ReadAsArray()
 algo_names = ['Generalized Linear Models', 'Generalized Additive Model', 'Bioclim', 'Boosted Regression Trees ',
               'Gaussian Process Regression']
-subfig_names = ['A', 'B', 'C', 'D', 'E']
+subfig_names = ['a', 'b', 'c', 'd', 'e']
 img = np.where(img < 0, np.nan, img)
 
 ds_mask = gdal.Open('Data/Mask/IBERIA_MASK_10km.tif')
@@ -555,7 +556,7 @@ for i, ax in enumerate(axes.flatten()):
         im = ax.imshow(img[i], cmap='jet', vmin=0, vmax=1, extent=ext_min_max(ds), origin='upper', zorder=0)
         scale_bar(ax, (0.05, 0.05), 250)
 
-        props = dict(boxstyle='square', facecolor='white', alpha=0.75)
+        props = dict(boxstyle='square', facecolor='white', alpha=1)
         # place a text box in upper left in axes coords
         ax.text(0.95, 0.95, algo_names[i], transform=ax.transAxes, fontsize=12,
                 verticalalignment='top', horizontalalignment='right', bbox=props)
@@ -571,7 +572,7 @@ for i, ax in enumerate(axes.flatten()):
 
 plt.colorbar(im, ax=[ax_cb], location='left')
 
-plt.savefig("Plots/fig_lynxpardinus_single_sdms.pdf", dpi=300)
+plt.savefig("Plots/fig_ursusarctos_single_sdms.pdf", dpi=300)
 plt.close()
 
 
@@ -595,7 +596,7 @@ l_imgs = [disp1_lynx, disp2_lynx, disp3_lynx, disp4_lynx]
 l_imgs = [np.where(x < -1, np.NaN, x) for x in l_imgs]
 l_imgs = [np.where(x == 20, 11, x) for x in l_imgs]
 
-subfig_names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+subfig_names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 #threshold_names = ['> 2.5%', '> 2.5%', '> 5%', '> 5%', '> 10%', '> 10%', '> 25%', '> 25%']
 threshold_names = ['> 2.5%', '> 5%', '> 10%', '> 25%']
 species_names = ['Ursus arctos', 'Lynx pardinus', 'Ursus arctos', 'Lynx pardinus', 'Ursus arctos', 'Lynx pardinus',
@@ -616,7 +617,7 @@ def get_colmap(a):
     return vmin, vmax, colmap, loc_ticks
 
 
-ds_z = gdal.Open(r"E:\Meine Ablage\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
+ds_z = gdal.Open(r"C:\Users\leonx\Google Drive\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
 z_data = ds_z.ReadAsArray()
 from matplotlib.colors import LightSource
 # Generate the hillshaded intensity
@@ -673,12 +674,12 @@ for i, ax in enumerate(axes.flatten()):
         vmin, vmax, temp_colmap, loc_ticks2 = get_colmap(temp_img)
         cbar = fig.colorbar(im, ax=axes.ravel().tolist(), orientation='horizontal',
                             fraction=0.08, pad=0.01, aspect=cbar_aspect)
-    scale_bar(ax, (0.05, 0.05), 250, zorder=6)
+        scale_bar(ax, (0.75, 0.05), 250, zorder=6)
     props = dict(boxstyle='square', facecolor='white', alpha=1)
     #ax.text(0.95, 0.95, species_names[i], transform=ax.transAxes, fontsize=12,
     #    verticalalignment='top', horizontalalignment='right', bbox=props, zorder=6)
-    ax.text(0.95, 0.05, threshold_names[i], transform=ax.transAxes, fontsize=12,
-             verticalalignment='bottom', horizontalalignment='right',
+    ax.text(0.95, 0.95, threshold_names[i], transform=ax.transAxes, fontsize=12,
+             verticalalignment='top', horizontalalignment='right',
              bbox=props, zorder=6)
     ax.text(0.05, 0.95, subfig_names[i], transform=ax.transAxes, fontsize=16,
              verticalalignment='top', horizontalalignment='left',
@@ -695,23 +696,23 @@ cbar = fig.colorbar(im, cax=ax_cb, orientation='horizontal')
 #cbar = fig.colorbar(im, ax=axes.ravel().tolist(), orientation='horizontal',
 #                    fraction=0.08, pad=0.01, aspect=cbar_aspect)
 
-cbar.set_label('Year of Occupation', size=10)
+cbar.set_label('Year of recolonisation', size=10)
 cbar.set_ticks(loc_ticks2)
-cbar.ax.set_xticklabels(['Decolonised', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncolonised'])
-cbar.ax.tick_params(labelsize=10)
+cbar.ax.set_xticklabels(['Aband.', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncol.'])
+cbar.ax.tick_params(labelsize=8)
 #plt.colorbar(im, ax=[ax_cb], location='left')
 
-plt.savefig("Plots/fig_dispersal_lynx.pdf", dpi=300, bbox_inches='tight')
+plt.savefig("Plots/fig_dispersal_lynx_4-scenarios.pdf", dpi=300, bbox_inches='tight')
 plt.close()
 
 
 # new version with 2 scenarios
-#l_imgs = [disp1_bear, disp4_bear]
+l_imgs = [disp1_bear, disp4_bear]
 l_imgs = [disp1_lynx, disp4_lynx]
 l_imgs = [np.where(x < -1, np.NaN, x) for x in l_imgs]
 l_imgs = [np.where(x == 20, 11, x) for x in l_imgs]
 
-subfig_names = ['A', 'B']
+subfig_names = ['a', 'b']
 threshold_names = ['> 2.5%', '> 25%']
 
 fig, axes = plt.subplots(1, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(8, 5))  # 7, 13
@@ -747,12 +748,12 @@ for i, ax in enumerate(axes.flatten()):
         vmin, vmax, temp_colmap, loc_ticks2 = get_colmap(temp_img)
         cbar = fig.colorbar(im, ax=axes.ravel().tolist(), orientation='horizontal',
                             fraction=0.08, pad=0.01, aspect=cbar_aspect)
-    #scale_bar(ax, (0.05, 0.05), 250, zorder=6)
+        scale_bar(ax, (0.75, 0.05), 250, zorder=6)
     props = dict(boxstyle='square', facecolor='white', alpha=1)
-    ax.text(0.95, 0.05, threshold_names[i], transform=ax.transAxes, fontsize=14,
-             verticalalignment='bottom', horizontalalignment='right',
+    ax.text(0.95, 0.95, threshold_names[i], transform=ax.transAxes, fontsize=12,
+             verticalalignment='top', horizontalalignment='right',
              bbox=props, zorder=6)
-    ax.text(0.05, 0.95, subfig_names[i], transform=ax.transAxes, fontsize=18,
+    ax.text(0.05, 0.95, subfig_names[i], transform=ax.transAxes, fontsize=16,
              verticalalignment='top', horizontalalignment='left',
              fontweight='bold', zorder=6)
 
@@ -769,8 +770,8 @@ cbar = fig.colorbar(im, cax=ax_cb, orientation='horizontal')
 
 cbar.set_label('Year of recolonisation', size=10)
 cbar.set_ticks(loc_ticks2)
-cbar.ax.set_xticklabels(['Decol.', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncol.'])
-cbar.ax.tick_params(labelsize=10)
+cbar.ax.set_xticklabels(['Aband.', 'Stable', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Uncol.'])
+cbar.ax.tick_params(labelsize=8)
 #plt.colorbar(im, ax=[ax_cb], location='left')
 
 plt.savefig("Plots/fig_dispersal_lynx_v2.pdf", dpi=300, bbox_inches='tight')
@@ -782,16 +783,15 @@ plt.close()
 # -----------------
 # Priorisation
 # -----------------
-vague_bear = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\bear\dispersal_vague_noPA_repro.tif").ReadAsArray()
-vague_lynx = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\lynx\dispersal_vague_noPA_repro.tif").ReadAsArray()
-low_bear = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\bear\low_colonize_repro.tif").ReadAsArray()
-low_lynx = gdal.Open(r"C:\Users\Leon\PycharmProjects\iberian_conservation\R\GAP_analysis\results\lynx\low_colonize_repro.tif").ReadAsArray()
+vague_bear = gdal.Open(r"C:\Users\leonx\Desktop\bear\dispersal_vague_noPA_repro.tif").ReadAsArray()
+vague_lynx = gdal.Open(r"C:\Users\leonx\Desktop\lynx\dispersal_vague_noPA_repro.tif").ReadAsArray()
+low_bear = gdal.Open(r"C:\Users\leonx\Desktop\bear\low_colonize_repro.tif").ReadAsArray()
+low_lynx = gdal.Open(r"C:\Users\leonx\Desktop\lynx\low_colonize_repro.tif").ReadAsArray()
 
 l_imgs = [vague_bear, vague_lynx, low_bear, low_lynx]
 l_imgs = [np.where(x == 0, np.NaN, x) for x in l_imgs]
 
-subfig_names = ['A', 'B']
-threshold_names = ['> 2.5%', '> 25%']
+subfig_names = ['a', 'b']
 
 fig, axes = plt.subplots(1, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(8, 5))  # 7, 13
 fig.subplots_adjust(hspace=.05, wspace=.05)
@@ -818,25 +818,30 @@ for i, ax in enumerate(axes.flatten()):
     # raster imgs
     ax.imshow(rgb, extent=ext_min_max(ds_z), origin='upper', alpha=0.75)
 
+    ax.text(0.05, 0.95, subfig_names[i], transform=ax.transAxes, fontsize=18,
+             verticalalignment='top', horizontalalignment='left',
+             fontweight='bold', zorder=6)
+
 ax = axes.flatten()
-im = ax[0].imshow(l_imgs[0], cmap=colors.ListedColormap(['red']),
+im = ax[0].imshow(l_imgs[0], cmap=mpl.colors.ListedColormap(['red']),
                extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
                origin='upper', zorder=1, alpha=1)
-im2 = ax[0].imshow(l_imgs[1], cmap=colors.ListedColormap(['yellow']),
+im2 = ax[0].imshow(l_imgs[1], cmap=mpl.colors.ListedColormap(['yellow']),
                extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
                origin='upper', zorder=1, alpha=1)
-im3 = ax[1].imshow(l_imgs[2], cmap=colors.ListedColormap(['red']),
+im3 = ax[1].imshow(l_imgs[2], cmap=mpl.colors.ListedColormap(['red']),
                extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
                origin='upper', zorder=1, alpha=1)
-im4 = ax[1].imshow(l_imgs[3], cmap=colors.ListedColormap(['yellow']),
+im4 = ax[1].imshow(l_imgs[3], cmap=mpl.colors.ListedColormap(['yellow']),
                extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
                origin='upper', zorder=1, alpha=1)
 
 import matplotlib.patches as mpatches
-patch1 = mpatches.Patch(color='red', label='Ursus arctos')
-patch2 = mpatches.Patch(color='yellow', label='Lynx pardinus')
-all_handles = (patch1, patch2)
-leg = ax[1].legend(handles=all_handles, loc=4, frameon=False, facecolor=None, fontsize=10)
+patch1 = mpatches.Patch(color='red', label='Bear')
+patch2 = mpatches.Patch(color='yellow', label='Lynx')
+#all_handles = (patch1, patch2)
+leg = ax[1].legend(handles=(patch1, patch2), loc=1, fontsize=10)
+#leg2 = ax[1].legend(handles=(patch2,), loc=4, fontsize=10)
 
 plt.savefig("Plots/fig_prioritisation.pdf", dpi=300, bbox_inches='tight')
 plt.close()
