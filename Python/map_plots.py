@@ -305,7 +305,7 @@ redlist2 = ds_redlist2.ReadAsArray()
 redlist2 = np.where(redlist2 != 1, np.nan, 1)
 
 # hillshade
-ds_z = gdal.Open(r"C:\Users\leonx\Google Drive\01_MSc_GCG\MSc6_GCIB\Project\Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
+ds_z = gdal.Open(r"Data\DEM\SRTM_V3_90m_IBERIA_250m.tif")
 z_data = ds_z.ReadAsArray()
 #z_data = np.where(z_data == 0, np.nan, z_data)
 
@@ -331,6 +331,8 @@ msh_xy = np.mgrid[xmin:xmax:xres, ymax:ymin:yres]
 # extent and background
 ext = (2590000.0, 3800000.0, 1520000.0, 2520000.0)
 
+# ======================================================================================================================
+# ======================================================================================================================
 fig = plt.figure(figsize=(10, 6))
 axes_class = (GeoAxes, dict(map_projection=ccrs.epsg(3035)))
 grid = AxesGrid(fig, 111, axes_class=axes_class,
@@ -412,6 +414,106 @@ ax2.text(0.025, 0.975, "b", transform=ax2.transAxes, fontsize=16,
                 fontweight='bold', zorder=6)
 
 plt.savefig("Plots/fig2_binary_v2.pdf", dpi=300, bbox_inches='tight')
+plt.close()
+
+
+# ======================================================================================================================
+# Sensitivity Europe vs Iberia
+# ======================================================================================================================
+# input
+ds1 = gdal.Open('Data/SDMs/ursusarctos_SDM_ensemble_mn_md_wmn_cav_sdp.tif')
+img1 = ds1.ReadAsArray()
+img1 = img1[2,:,:]
+img1 = np.where(img1 > 0.46, 1, np.nan)  # bear = 0.46 (weighted mean ensemble)
+# input
+ds2 = gdal.Open('Data/SDMs/ursusarctos_iberia_v2_SDM_ensemble_mn_md_wmn_cav_sdp.tif')
+img2 = ds2.ReadAsArray()
+img2 = img2[2,:,:]
+img2 = np.where(img2 > 0.27, 1, np.nan)  # bear = 0.27 (weighted mean ensemble)
+
+fig = plt.figure(figsize=(10, 6))
+axes_class = (GeoAxes, dict(map_projection=ccrs.epsg(3035)))
+grid = AxesGrid(fig, 111, axes_class=axes_class,
+                      nrows_ncols = (1, 2),
+                      axes_pad = 0.2,
+                      label_mode = ''
+                      )
+fig.subplots_adjust(hspace=.1, wspace=.1)
+ax1 = grid[0]
+ax2 = grid[1]
+
+ax1.set_extent(ext, crs=ccrs.epsg(3035))
+ax2.set_extent(ext, crs=ccrs.epsg(3035))
+
+ax1.imshow(rgb, extent=ext_min_max(ds_z), origin='upper', alpha=0.75)
+ax2.imshow(rgb, extent=ext_min_max(ds_z), origin='upper', alpha=0.75)
+
+ax1.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=1)
+ax1.add_feature(cartopy.feature.COASTLINE, lw=1, linestyle='-', zorder=2)
+ax1.add_feature(cartopy.feature.BORDERS, lw=1, linestyle='-', zorder=2)
+ax2.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=1)
+ax2.add_feature(cartopy.feature.COASTLINE, lw=1, linestyle='-', zorder=2)
+ax2.add_feature(cartopy.feature.BORDERS, lw=1, linestyle='-', zorder=2)
+
+gl1 = ax1.gridlines(draw_labels=True, linewidth=0.5, alpha=0.75, linestyle='-', color='grey', zorder=5)
+gl2 = ax2.gridlines(draw_labels=True, linewidth=0.5, alpha=0.75, linestyle='-', color='grey', zorder=5)
+
+gl1.bottom_labels = False
+gl1.right_labels = False
+gl1.left_labels = True
+gl1.top_labels = True
+gl2.bottom_labels = False
+gl2.right_labels = False
+gl2.left_labels = False
+gl2.top_labels = True
+
+gl1.xlocator = mticker.FixedLocator([-10, -8, -6, -4, -2, 0, 2])
+gl1.ylocator = mticker.FixedLocator([36, 38, 40, 42, 44, 46])
+gl1.xlabel_style = {'size': 10, 'color': 'black'}
+gl1.ylabel_style = {'size': 10, 'color': 'black'}
+gl2.xlocator = mticker.FixedLocator([-10, -8, -6, -4, -2, 0, 2])
+gl2.ylocator = mticker.FixedLocator([36, 38, 40, 42, 44, 46])
+gl2.xlabel_style = {'size': 10, 'color': 'black'}
+gl2.ylabel_style = {'size': 10, 'color': 'black'}
+
+# raster imgs
+ax1.imshow(img1, cmap=mpl.colors.ListedColormap(mpl.colors.to_rgba('lightpink')),
+          alpha=0.7, extent=ext_min_max(ds1), origin='upper', zorder=4)
+ax1.imshow(redlist1, cmap=mpl.colors.ListedColormap(mpl.colors.to_rgba('red')),
+          alpha=0.7, extent=ext_min_max(ds_redlist1), origin='upper', zorder=4)
+ax2.imshow(img2, cmap=mpl.colors.ListedColormap(mpl.colors.to_rgba('lightpink')),
+          alpha=0.7, extent=ext_min_max(ds2), origin='upper', zorder=4)
+ax2.imshow(redlist1, cmap=mpl.colors.ListedColormap(mpl.colors.to_rgba('red')),
+          alpha=0.7, extent=ext_min_max(ds_redlist2), origin='upper', zorder=4)
+
+# legend
+labels = ['Suitable', 'Occupied']
+colors = ['lightpink', 'red']
+patches = [
+    mpl.patches.Patch(color=color, label=label)
+    for label, color in zip(labels, colors)]
+ax2.legend(patches, labels, loc='lower right', frameon=True, fontsize=13,
+           framealpha=1, edgecolor='black', fancybox=False)
+
+#scale_bar(ax1, (0.05, 0.05), 250, zorder=6)
+#scale_bar(ax2, (0.05, 0.05), 250, zorder=6)
+
+
+
+props = dict(boxstyle='square', facecolor='white', alpha=1)
+# place a text box in upper left in axes coords
+ax1.text(0.95, 0.95, "Bear (Europe data; n = 870)", transform=ax1.transAxes, fontsize=12,
+        verticalalignment='top', horizontalalignment='right', bbox=props, zorder=6)
+ax2.text(0.95, 0.95, "Bear (Iberia data; n = 134)", transform=ax2.transAxes, fontsize=12,
+        verticalalignment='top', horizontalalignment='right', bbox=props, zorder=6)
+ax1.text(0.025, 0.975, "a", transform=ax1.transAxes, fontsize=16,
+                verticalalignment='top', horizontalalignment='left',
+                fontweight='bold', zorder=6)
+ax2.text(0.025, 0.975, "b", transform=ax2.transAxes, fontsize=16,
+                verticalalignment='top', horizontalalignment='left',
+                fontweight='bold', zorder=6)
+
+plt.savefig("Plots/fig_SDM_binary_ursusarctos_iberia-vs-europe.pdf", dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -783,14 +885,15 @@ plt.close()
 # -----------------
 # Priorisation
 # -----------------
-vague_bear = gdal.Open(r"C:\Users\leonx\Desktop\bear\dispersal_vague_noPA_repro.tif").ReadAsArray()
-vague_lynx = gdal.Open(r"C:\Users\leonx\Desktop\lynx\dispersal_vague_noPA_repro.tif").ReadAsArray()
-low_bear = gdal.Open(r"C:\Users\leonx\Desktop\bear\low_colonize_repro.tif").ReadAsArray()
-low_lynx = gdal.Open(r"C:\Users\leonx\Desktop\lynx\low_colonize_repro.tif").ReadAsArray()
+vague_bear = gdal.Open(r"Data\Prio\bear\dispersal_vague_noPA_repro.tif").ReadAsArray()
+vague_lynx = gdal.Open(r"Data\Prio\lynx\dispersal_vague_noPA_15_km_repro.tif").ReadAsArray()
+low_bear = gdal.Open(r"Data\Prio\bear\low_colonize_repro.tif").ReadAsArray()
+low_lynx = gdal.Open(r"Data\Prio\lynx\low_colonize_repro.tif").ReadAsArray()
 
 l_imgs = [vague_bear, vague_lynx, low_bear, low_lynx]
 l_imgs = [np.where(x == 0, np.NaN, x) for x in l_imgs]
 
+ext = (2590000.0, 3800000.0, 1520000.0, 2520000.0)
 subfig_names = ['a', 'b']
 
 fig, axes = plt.subplots(1, 2, subplot_kw={'projection': ccrs.epsg(3035)}, figsize=(8, 5))  # 7, 13
@@ -824,16 +927,16 @@ for i, ax in enumerate(axes.flatten()):
 
 ax = axes.flatten()
 im = ax[0].imshow(l_imgs[0], cmap=mpl.colors.ListedColormap(['red']),
-               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               extent=ext_min_max(gdal.Open(r"Data\Prio\bear\dispersal_vague_noPA_repro.tif")),
                origin='upper', zorder=1, alpha=1)
 im2 = ax[0].imshow(l_imgs[1], cmap=mpl.colors.ListedColormap(['yellow']),
-               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               extent=ext_min_max(gdal.Open(r"Data\Prio\bear\dispersal_vague_noPA_repro.tif")),
                origin='upper', zorder=1, alpha=1)
 im3 = ax[1].imshow(l_imgs[2], cmap=mpl.colors.ListedColormap(['red']),
-               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               extent=ext_min_max(gdal.Open(r"Data\Prio\bear\dispersal_vague_noPA_repro.tif")),
                origin='upper', zorder=1, alpha=1)
 im4 = ax[1].imshow(l_imgs[3], cmap=mpl.colors.ListedColormap(['yellow']),
-               extent=ext_min_max(gdal.Open(r"Data\Dispersal\ursusarctos_th0.025\ursusarctos_th0.025.tif")),
+               extent=ext_min_max(gdal.Open(r"Data\Prio\bear\dispersal_vague_noPA_repro.tif")),
                origin='upper', zorder=1, alpha=1)
 
 import matplotlib.patches as mpatches

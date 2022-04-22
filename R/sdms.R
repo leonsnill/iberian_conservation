@@ -20,10 +20,10 @@ library(dismo)
 library(gam)
 library(GRaF)
 
-wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
-setwd(wd)
+#wd <- "C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian_conservation"
+#setwd(wd)
 
-species <- "ursusarctos"
+species <- "ursusarctos_iberia"
 #species <- "lynxpardinus"
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ calc.eval <- function(dat, colname_species, preds, thresh_method='MaxSens+Spec')
 
 # Mask
 mask <- raster("Data/Mask/EUROPE_MASK_10km.tif")
-if(species_name == "Lynx pardinus"){
+if(species == "lynxpardinus" | species == "ursusarctos_iberia"){
   mask <- raster("Data/Mask/IBERIA_MASK_10km.tif")
 }
 
@@ -195,7 +195,7 @@ names(stm) <- apply(expand.grid(c("tcb", "tcg", "tcw"), c("sos", "pos", "eos")),
 
 brick_preds <- brick(list(bioclim, lcf, dem, stm))
 
-if(species_name == "Lynx pardinus"){
+if(species == "lynxpardinus" | species == "ursusarctos_iberia"){
   brick_preds <- crop(brick_preds, mask)
 }
 
@@ -210,7 +210,6 @@ brick_preds <- setValues(brick_preds, brick_preds_val)
 # -----------------------------------------------------------------------------------------------------------------
 # SPECIES DATA
 # -----------------------------------------------------------------------------------------------------------------
-
 # read presence/absence rasters
 r_pre <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_presence_thinned.tif"))
 r_abs <- raster(paste0("Data/GBIF/", species, "_europe_1990-2020_absence_thinned.tif"))
@@ -321,12 +320,12 @@ for (i in 1:10) {
   c_brt[i] <- paste0("m_brt", i)
   
   # (2.2) Gaussian Process Classification (GPC)
-  m_gp <- GRaF::graf(y = df_sub_i$species, x = df_sub_i[,pred_sel], opt.l = TRUE, method = "Laplace")
-  assign(paste0("m_gp", i), m_gp)
-  c_gp[i] <- paste0("m_gp", i)
+  #m_gp <- GRaF::graf(y = df_sub_i$species, x = df_sub_i[,pred_sel], opt.l = TRUE, method = "Laplace")
+  #assign(paste0("m_gp", i), m_gp)
+  #c_gp[i] <- paste0("m_gp", i)
   
   saveRDS(m_brt, paste0("R/models/", species, "_m_brt", i,".rds"))
-  saveRDS(m_gp, paste0("R/models/", species, "_m_gp", i,".rds"))
+  #saveRDS(m_gp, paste0("R/models/", species, "_m_gp", i,".rds"))
 }
 
 
@@ -363,9 +362,9 @@ for (i in 1:10) {
 # -----------------------------------------------------------------------------------------------------------------
 # MODEL ASSESSMENT
 # -----------------------------------------------------------------------------------------------------------------
-all_models <- c('m_glm', 'm_gam', 'm_bc', 'm_brt', 'm_gp')
+all_models <- c('m_glm', 'm_gam', 'm_bc', 'm_brt')
 stat_models <- c('m_glm', 'm_gam', 'm_bc')
-ml_models <- c(c_brt, c_gp)
+ml_models <- c(c_brt)
 
 
 # (1) internal (training data) performance
@@ -385,6 +384,7 @@ gp_means <- train_preds_ml %>%
 
 # combine all models
 train_preds <- data.frame(cbind(train_preds_stat, brt_means, gp_means))
+train_preds <- data.frame(cbind(train_preds_stat, brt_means))
 names(train_preds) <- all_models
 
 # assess performance
@@ -454,6 +454,7 @@ img_pred_gp <- img_pred_ml %>%
   select(c_gp) %>%
   rowMeans()
 img_pred <- cbind(img_pred, img_pred_brt, img_pred_gp)
+img_pred <- cbind(img_pred, img_pred_brt)
 names(img_pred) <- c("x", "y", all_models)
 
 # Binarise predictions of all algorithms

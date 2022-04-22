@@ -21,7 +21,7 @@ setwd("C:/Users/Leon/Google Drive/03_LSNRS/Projects/Iberian_Conservation/iberian
 
 species_name <- "Ursus arctos"
 scientificName <- "Ursus arctos Linnaeus, 1758"
-output_name <- "ursusarctos"
+output_name <- "ursusarctos_iberia"
 roi <- 'POLYGON((-9.843 35.679, 32.344 35.679, 32.344 71.414, -9.843 71.414, -9.843 35.679))'
 
 species_name <- "Lynx pardinus"
@@ -38,7 +38,7 @@ df <- occ_search(scientificName = species_name, return='data', limit=100000,
 #df <- df$data
 
 # write to .csv
-write.csv(df, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
+write.csv(df$data, paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
 
 # read 
 df <- read.csv(paste0("Data/GBIF/", output_name, "_europe_1980-2020.csv"))
@@ -148,9 +148,9 @@ for (i in c(0, 1)){
     filter(presence == i)
   
   if (i == 0) {
-    if (species_name == "Ursus arctos") {
-      pres_temp <- sample_n(pres_temp, 20000)
-    }
+    #if (species_name == "Ursus arctos") {
+    #  pres_temp <- sample_n(pres_temp, 20000)
+    #}
     pres_temp$presence <- 1
   }
   
