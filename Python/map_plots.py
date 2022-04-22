@@ -513,7 +513,7 @@ ax2.text(0.025, 0.975, "b", transform=ax2.transAxes, fontsize=16,
                 verticalalignment='top', horizontalalignment='left',
                 fontweight='bold', zorder=6)
 
-plt.savefig("Plots/fig_SDM_binary_ursusarctos_iberia-vs-europe.pdf", dpi=300, bbox_inches='tight')
+plt.savefig("Plots/fig_SDM_binary_ursusarctos_iberia-vs-europe.png", dpi=300, bbox_inches='tight')
 plt.close()
 
 
@@ -946,7 +946,7 @@ patch2 = mpatches.Patch(color='yellow', label='Lynx')
 leg = ax[1].legend(handles=(patch1, patch2), loc=1, fontsize=10)
 #leg2 = ax[1].legend(handles=(patch2,), loc=4, fontsize=10)
 
-plt.savefig("Plots/fig_prioritisation.pdf", dpi=300, bbox_inches='tight')
+plt.savefig("Plots/fig_prioritisation.png", dpi=300, bbox_inches='tight')
 plt.close()
 
 
